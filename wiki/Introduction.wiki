@@ -90,9 +90,7 @@ Here is a diagram showing ptpv2d in action in the same test run after the clock 
 http://www.bartky.net/Media/ptpv2d_scatter_example_chart.png
 
 ----
-
 <p align="center">
 Copyright (c) 2010 by Alan K. Bartky, all rights reserved
 </p>
-
 ----
