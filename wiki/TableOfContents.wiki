@@ -7,6 +7,6 @@ Copyright (c) 2010 Alan K. Bartky, all rights reserved
    * [Introduction Introduction] 
    * (Placeholder for future sections)
    * ptpv2d wiki maintenance and info
-     * [http://code.google.com/p/maatkit/w/list List & Search Wiki Pages] 
-     * [http://code.google.com/p/maatkit/w/edit New Wiki Page] (requires SVN commit rights) 
+     * [http://code.google.com/p/ptpv2d/w/list List & Search Wiki Pages] 
+     * [http://code.google.com/p/ptpv2d/w/edit New Wiki Page] (requires SVN commit rights) 
  
