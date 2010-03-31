@@ -17,9 +17,7 @@ The ptpv2d Precision Time Protocol daemon offers the following features:
   * Use of POSIX socket calls for all messages.  Message handling is contained in a separate module to ensure easy portation to any desired operating system.
   * Freescale MPC8313E Ethernet port driver with full support for PTP version 1 and version 2 message hardware time stamping.
   * Ability to adjust the Hardware clock very precisely (as precise as one part per billion).  Software algorithm for fine (as small as one part per billion) adjustment of the Hardware clock
-
   * Ability to report detected variances from Grandmaster clock in parts per million
-
   * Command line ability to set four different debug output levels: none, basic, verbose, and Message
   * Ability to set Sync/Follow-up transmit time values of less than one second.  This allows for multiple Sync/Follow-ups per second, which provides enhanced accuracy and tracking of the "slave" system to the "grandmaster" system.
   * Additional run time options and support code include:
