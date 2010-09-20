@@ -40,6 +40,8 @@
 #define MANUFACTURER_ID_LENGTH              48
 #define MANUFACTURER_ID \
   "ptpv2d;licensed_under_GNU_Public_license_ver2.0\0\0"
+// 12345678901234567890123456789012345678901234567 8
+//          1         2         3         4
 
 #define DEFAULT_SYNC_INTERVAL        0
 #define DEFAULT_ANNOUNCE_INTERVAL    2  // AKB: Added for PTP V2

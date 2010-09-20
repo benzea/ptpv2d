@@ -364,7 +364,7 @@ Boolean doInit(                       // doInit function
     // netInit failed!  Print error messge, change state to faulty
     // and return FALSE
 
-    ERROR("doInit: failed to initialize network\n");
+    PERROR("doInit: failed to initialize network\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return FALSE;
   }
@@ -1091,7 +1091,7 @@ void handle(RunTimeOpts * rtOpts,
   
   if(length < HEADER_LENGTH)
   {
-    ERROR("handle: message shorter than header length\n");
+    PERROR("handle: message shorter than header length\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -1716,7 +1716,7 @@ void handleAnnounce(V2MsgHeader  *header,
   
   if(length < V2_ANNOUNCE_LENGTH)
   {
-    ERROR("handleAnnounce: short announce message\n");
+    PERROR("handleAnnounce: short announce message\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -1882,7 +1882,7 @@ void handleSync(MsgHeader    *header,
       || length < V2_SYNC_LENGTH
      )
   {
-    ERROR("handleSync: short sync message\n");
+    PERROR("handleSync: short sync message\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -2229,7 +2229,7 @@ void handleFollowUp(MsgHeader   *header,
       || length < V2_FOLLOWUP_LENGTH
      )
   {
-    ERROR("handleFollowUp: short follow up message\n");
+    PERROR("handleFollowUp: short follow up message\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -2505,7 +2505,7 @@ void handleDelayReq(MsgHeader    *header,
      || length < V2_DELAY_REQ_LENGTH
     )
   {   
-    ERROR("handleDelayReq: short delay request message\n");
+    PERROR("handleDelayReq: short delay request message\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -2586,7 +2586,7 @@ void handleDelayResp(MsgHeader   *header,
      || length < V2_DELAY_RESP_LENGTH
     )  
   {
-    ERROR("handleDelayResp: short delay response message\n");
+    PERROR("handleDelayResp: short delay response message\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -2701,7 +2701,7 @@ void handlePDelayReq(V2MsgHeader  *v2_header,
   DBGV("handlePDelayReq: message length: %d\n",length);
   if(length < V2_PDELAY_REQ_LENGTH)
   {   
-    ERROR("handlePDelayReq: short pdelay request message\n");
+    PERROR("handlePDelayReq: short pdelay request message\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -2792,7 +2792,7 @@ void handlePDelayResp(V2MsgHeader  *v2_header,
   DBGV("handlePDelayResp: message length: %d\n",length);
   if(length < V2_PDELAY_RESP_LENGTH)
   {   
-    ERROR("handlePDelayResp: short pdelay response message\n");
+    PERROR("handlePDelayResp: short pdelay response message\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -2860,7 +2860,7 @@ void handlePDelayResp(V2MsgHeader  *v2_header,
              )
          )
       {
-        ERROR("handlePDelayResp: unrequested, invalid or multiple pdelay response message\n");
+        PERROR("handlePDelayResp: unrequested, invalid or multiple pdelay response message\n");
         toState(PTP_FAULTY, rtOpts, ptpClock);
         return;
       }
@@ -2880,7 +2880,7 @@ void handlePDelayResp(V2MsgHeader  *v2_header,
 
       if (!ptpClock->sentDelayReq)
       {
-        ERROR("handlePDelayResp: multiple pdelay response messages received\n");
+        PERROR("handlePDelayResp: multiple pdelay response messages received\n");
         toState(PTP_FAULTY, rtOpts, ptpClock);
         return;
       }
@@ -2962,7 +2962,7 @@ void handlePDelayRespFollowUp(V2MsgHeader  *v2_header,
   DBGV("handlePDelayRespFollowUp: message length: %d\n",length);
   if(length < V2_PDELAY_RESP_FOLLOWUP_LENGTH)
   {   
-    ERROR("handlePDelayRespFollowUp: short pdelay response follow up message\n");
+    PERROR("handlePDelayRespFollowUp: short pdelay response follow up message\n");
     toState(PTP_FAULTY, rtOpts, ptpClock);
     return;
   }
@@ -2999,7 +2999,7 @@ void handlePDelayRespFollowUp(V2MsgHeader  *v2_header,
           || (!port_id_ok)         // Make sure requesting port field matches us
          )
       {
-        ERROR("handlePDelayRespFollowUp: unrequested or invalid message\n");
+        PERROR("handlePDelayRespFollowUp: unrequested or invalid message\n");
         toState(PTP_FAULTY, rtOpts, ptpClock);
         return;
       }
@@ -3019,7 +3019,7 @@ void handlePDelayRespFollowUp(V2MsgHeader  *v2_header,
 
       if (!ptpClock->sentDelayReq)
       {
-        ERROR("handlePDelayRespFollowUp: multiple or unexpected rx follow up\n");
+        PERROR("handlePDelayRespFollowUp: multiple or unexpected rx follow up\n");
         toState(PTP_FAULTY, rtOpts, ptpClock);
         return;
       }

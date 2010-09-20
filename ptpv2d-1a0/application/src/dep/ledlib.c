@@ -47,12 +47,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef LED_SUPPORT
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <memory.h>
+#endif
+
+#ifdef MPC8313E_RDB
 
 // Per 8313EVB_INIT.cfg, LED/Status buffer is memory mapped @ 0xfa000000, size 32 KB
 
@@ -88,6 +92,9 @@
 #define STATUS_LED_ON   0xEF
 #define STATUS_LED_OFF  0x10
 
+#endif
+
+#ifdef LED_SUPPORT
 /* Global vars */
 volatile unsigned char * led_ptr;
 unsigned char            led_value;
@@ -170,9 +177,11 @@ int iounmap(volatile void *start, size_t length)
     return munmap((unsigned char*)start-ofs_addr, length+ofs_addr);
 }
 
+#endif
 
 void all_leds (unsigned char on_or_off)
 {
+#ifdef LED_SUPPORT
    if (on_or_off)
    {
       led_value = LEDS_ALL_ON;
@@ -182,11 +191,13 @@ void all_leds (unsigned char on_or_off)
       led_value = LEDS_ALL_OFF;
    }
    out_8(led_ptr,led_value);
+#endif
 }
 
 
 void red_alarm (unsigned char on_or_off)
 {
+#ifdef LED_SUPPORT
    if (on_or_off)
    {
       /* Turn LED on, turn bit off */
@@ -199,10 +210,12 @@ void red_alarm (unsigned char on_or_off)
       led_value |= RED_LED_OFF;
    }
    out_8(led_ptr,led_value);
+#endif
 }
 
 void yellow_alarm (unsigned char on_or_off)
 {
+#ifdef LED_SUPPORT
    if (on_or_off)
    {
       /* Turn LED on, turn bit off */
@@ -214,11 +227,13 @@ void yellow_alarm (unsigned char on_or_off)
       led_value |= YELLOW_LED_OFF;
    }
    out_8(led_ptr,led_value);
+#endif
 }
 
 
 void green_alarm (unsigned char on_or_off)
 {
+#ifdef LED_SUPPORT
    if (on_or_off)
    {
       /* Turn LED on, turn bit off */
@@ -230,6 +245,7 @@ void green_alarm (unsigned char on_or_off)
       led_value |= GREEN_LED_OFF;
    }
    out_8(led_ptr,led_value);
+#endif /* LED_SUPPORT */
 }
 
 /* Function to use least significant 4 bits of LED register to act
@@ -238,6 +254,7 @@ void green_alarm (unsigned char on_or_off)
 
 void led_meter(unsigned char value)
 {
+#ifdef LED_SUPPORT
   unsigned char led_meter_value;
 
   led_meter_value = 0;  /* Assume VU meter min value */
@@ -268,13 +285,14 @@ void led_meter(unsigned char value)
   led_value |= led_meter_value;
 
   out_8(led_ptr,led_value);
-
+#endif
 }
 
 
 void init_leds(void)
 {
 
+#ifdef LED_SUPPORT
 	/* Create user mode pointer to LED register */
 
 	led_ptr = (unsigned char *) ioremap(MEM_ADDR, MEMSIZE);
@@ -284,6 +302,7 @@ void init_leds(void)
         led_value = STATUS_LED_ON;
 
         out_8(led_ptr,led_value);
+#endif
 }
 
 // eof ledlib.c

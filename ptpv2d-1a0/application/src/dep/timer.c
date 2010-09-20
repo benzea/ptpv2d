@@ -36,7 +36,20 @@
 
 #include "../ptpd.h"
 
+/* TIMER_INTERVAL is based on number of "TICKS" as set
+ * by initTimer function where currently 1 Tick
+ * maps to the seconds and microseconds value passed
+ * when calling initTimer
+ */
 #define TIMER_INTERVAL 1
+
+/* Timer global variables */
+
+#ifdef __WINDOWS__
+HANDLE TimerQueue;
+#endif
+
+/* Elaspsed time (allocated one integer per PTP port) */
 int elapsed[MAX_PTP_PORTS];
 
 #ifdef LIMIT_RUNTIME
@@ -48,7 +61,16 @@ int max_ticks=14400; /*14400 4 hours in seconds (60 *60 * 4) */
 int license_tick_counter = 0;
 #endif
 
+/* catch_alarm:
+ * Simple function to be called by the operating
+ * system on a periodic basis, update the
+ * private timer array table and return
+ */
+#ifdef __WINDOWS__
+VOID CALLBACK catch_alarm(PVOID lpParameter, BOOLEAN TimerOrWaitFired)
+#else
 void catch_alarm(int sig)
+#endif
 {
   int i;
 
@@ -59,14 +81,16 @@ void catch_alarm(int sig)
   // NOTE: If you put in a debug print here, it will interleave with other messages
   // from the normal execution task.  So if you need to put one in, put it
   // in to verify it, but remove it once you verify timeout is occurring OK.
-/* ifdef PTPD_DBG
+#ifdef TEMPORARY_DEBUG_TIMER_TICK
+#ifdef PTPD_DBG
   if (debugLevel >= 1) 
   {
-    DBGV("\n(***tick***)\n");
+    DBGV("\n(***tick %u***)\n",elapsed[0]);
     fflush(NULL);
   }
- endif
-*/
+#endif
+#endif
+
   
   /*  fprintf(stderr, "tick: %d, %d\n",max_ticks,license_tick_counter); */
 
@@ -86,18 +110,43 @@ void initTimer(Integer32  seconds,
                UInteger32 microseconds
               )
 {
+#ifdef __WINDOWS__
+  BOOL success;
+#else
   struct itimerval itimer;
-  
+  int i;  
+#endif
+
   DBG("initTimer: %d seconds, %u microseconds\n",
       seconds,
       microseconds
      );
-  
+#ifdef __WINDOWS__
+    success = CreateTimerQueueTimer
+       (
+        &TimerQueue,            // Handle for timer
+        NULL,                   // NULL for default timer queue
+        catch_alarm,            // Callback function (NOTE: must be fast)
+        NULL,                   // Pointer to data for callback function
+        0,                      // Time (ms) before timer signaled for the first time
+        ( (seconds*1000)        // Interval time in milliseconds
+         +(microseconds/1000)
+        ),
+        WT_EXECUTEINIOTHREAD
+        //WT_EXECUTEINTIMERTHREAD // Run in timer thread (callback function must be quick
+       );
+    if (!success)
+        DBG("Failed to created windows timer\n");
+#else
+  //
+  // Not Windows code (e.g. Linux)
+  //
   // Set Alarm clock signal to ignore
   signal(SIGALRM, SIG_IGN);
 
-  int i;
-
+  //
+  // Clear elapsed time for all ports
+  //
   for (i=0; i<MAX_PTP_PORTS; i++)
   {
       elapsed[i] = 0;
@@ -123,6 +172,7 @@ void initTimer(Integer32  seconds,
             &itimer,      // Pointer to new itimerval structure 
             0             // Pointer to old structure (none in this case)
            );  
+#endif
 }
 
 void timerUpdate(IntervalTimer *itimer, int port_id)

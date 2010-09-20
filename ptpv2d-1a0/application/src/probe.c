@@ -57,14 +57,14 @@ void probe(RunTimeOpts *rtOpts, PtpClock *ptpClock)
     || rtOpts->probe_management_key == PTP_MM_SET_SYNC_INTERVAL
     )
   {
-    ERROR("probe: send not supported for that management message\n");
+    PERROR("probe: send not supported for that management message\n");
     return;
   }
   
   /* init */
   if(!netInit(&ptpClock->netPath, rtOpts, ptpClock))
   {
-    ERROR("probe: failed to initialize network\n");
+    PERROR("probe: failed to initialize network\n");
     return;
   }
   
@@ -92,7 +92,7 @@ void probe(RunTimeOpts *rtOpts, PtpClock *ptpClock)
          )
       )
     {
-      ERROR("probe: failed to pack management message\n");
+      PERROR("probe: failed to pack management message\n");
       return;
     }
     
@@ -107,7 +107,7 @@ void probe(RunTimeOpts *rtOpts, PtpClock *ptpClock)
                        )
       )
     {
-      ERROR("probe: failed to send message\n");
+      PERROR("probe: failed to send message\n");
       return;
     }
     

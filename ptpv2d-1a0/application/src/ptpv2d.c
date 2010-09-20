@@ -36,7 +36,7 @@
 
 RunTimeOpts rtOpts;  /* statically allocated run-time configuration data */
 #ifdef PTPD_DBG
-int debugLevel;
+int debugLevel; /* Global variable for enabling various debug printf statments */
 #endif
 
 
@@ -72,16 +72,20 @@ int main(int argc, char **argv)
   rtOpts.ptp8021AS                   = FALSE;  // AKB: Added for 802.1AS (PTP over Ethernet)
 
 #ifdef PTPD_DBG
-  debugLevel = 0;
+  debugLevel = 0; /* Set all debug printing off unless requested by user */
 #endif
 
+#ifdef CONFIG_MPC831X
+  //
+  // For running on MPC831X (Freescale system with hardware timestamping):
   // Multiport protocol not fully suported yet, so force default to eth1 interface 
   // which is the best port to use on the MPC8313E-RDB board
   // NOTE: this interface can be overriden by the user at startup
-  // time.
-
+  // time using the -b option when starting ptpv2d
+  //
   memset( rtOpts.ifaceName, 0,      IFACE_NAME_LENGTH);
-  strncpy(rtOpts.ifaceName, "eth1", IFACE_NAME_LENGTH);
+  strncpy((char * )rtOpts.ifaceName, "eth1", IFACE_NAME_LENGTH);
+#endif
 
   if( !(ptpClock = ptpdStartup(argc, argv, &ret, &rtOpts)) )
   {
