@@ -39,10 +39,15 @@
 #include "../mpc831x.h"
 #endif
 
+#if defined(__WINDOWS__)
+/* AKB: Windows C compiler does not include getopt */
+#include "getopt.h"
+#endif
+
 void displayStats(RunTimeOpts *rtOpts, PtpClock *ptpClock)
 {
   static int  start = 1;
-  static char sbuf[SCREEN_BUFSZ];
+  static char sbuf[SCREEN_BUFSZ]; /* AKB NOTE: make sure SCRREN_BUFSZ is larger than SCREEN_MAXSZ */
   char *      s;
   int         len = 0;
   
@@ -157,12 +162,38 @@ void displayStats(RunTimeOpts *rtOpts, PtpClock *ptpClock)
     len += sprintf(sbuf + len, "\n");
   }
 
-  
+#ifdef __WINDOWS__
+  /* Windows compiler doesn't have write function in stdio.h
+   * Using printf instead.  Note statistics print will be as
+   * long as the string created
+   */
+  if (!(rtOpts->csvStats))
+  {
+      sbuf[SCREEN_MAXSZ+1] = 0;  /* Put a NULL character to force max size */
+  }
+  printf(sbuf);
+
+#else
   write(1, sbuf, rtOpts->csvStats ? len : SCREEN_MAXSZ + 1);
+#endif
 }
 
 Boolean nanoSleep(TimeInternal *t)
 {
+#ifdef __WINDOWS__
+    /* Windows basic Sleep timer only supports milliseconds
+     * Convert Seconds and nanoseconds to milliseconds
+     * NOTE: Also this always returns TRUE
+     */
+    DWORD milliseconds;
+
+    milliseconds = (t->seconds * 1000) + (t->nanoseconds / 1000000000);
+    if (milliseconds == 0)
+    {
+        milliseconds = 1;
+    }
+    Sleep(milliseconds);
+#else
   struct timespec ts, tr;
   
   ts.tv_sec  = t->seconds;
@@ -174,7 +205,7 @@ Boolean nanoSleep(TimeInternal *t)
     t->nanoseconds = tr.tv_nsec;
     return FALSE;
   }
-  
+#endif  
   return TRUE;
 }
 
@@ -227,25 +258,71 @@ void setSystemTimeFromPtp(Integer16 utc_offset)
 }
 
 
-
-
-
 void getTime(TimeInternal *time, Integer16 utc_offset)
 {
 #ifdef CONFIG_MPC831X
   mpc831x_get_curr_time(time);
+#elif defined(__WINDOWS__)
+    unsigned long long U64Seconds;
+    unsigned long      Nanoseconds;
+    FILETIME           WindowsUTCTime;
+
+    GetSystemTimeAsFileTime(&WindowsUTCTime);            // Gets the current system time
+
+    // We now have the time based on 100 nanosecond increments since
+    // January 1, 1601.
+    // We need to change that to seconds and nanoseconds since
+    // January 1, 1970 to get to Linux time format
+    //
+
+    // Get system time into a unsigned 64 bit time in 100 ns increments
+
+    // Get Windows current high time
+    U64Seconds =    (unsigned long long) WindowsUTCTime.dwHighDateTime;
+
+    // Left shift into most signficant DWORD;
+    U64Seconds <<=  32;
+
+    // Get Windows current low time
+    U64Seconds +=   (unsigned long long) WindowsUTCTime.dwLowDateTime;
+
+    // Mod by 10,000 to get sub seconds (in 100 ns increments)
+    Nanoseconds =   (unsigned long)(U64Seconds % 10000ULL);
+
+    // Subtract out sub seconds
+    U64Seconds -=   (unsigned long long) Nanoseconds;
+
+    // Convert sub seconds in 100 ns increments to nanoseconds
+    Nanoseconds *=  100U;
+
+    // Convert 100 ns increments to seconds
+    U64Seconds /=   10000ULL;    
+
+    // Subtract absolute number of seconds between 
+    // January 1, 1970 and January 1, 1601
+    U64Seconds -=   1164447360ULL;  
+
+    // Copy calculated seconds and nanoseconds to 
+    // internal time structure (seconds and nanoseconds
+    // since January 1, 1970
+    time->seconds     = (unsigned long) U64Seconds;
+    time->nanoseconds = Nanoseconds;
 #else
+  /* Not windows time, system time is in Linux format */
   struct timeval tv;
   
   gettimeofday(&tv, 0);
 
   time->seconds     =  tv.tv_sec;
   time->nanoseconds =  tv.tv_usec*1000;
-
-  /* PTP uses TAI, gettime of day is UTC, so adjust */
-  time->seconds     += utc_offset;
-
 #endif
+
+  /* PTP uses TAI time (time without leap seconds
+   * since January 1, 1970), gettime of day is UTC
+   * (which includes leap seconds), so adjust for leap
+   * seconds since January 1, 1970
+   */
+  time->seconds     += utc_offset;
 }
 
 
@@ -254,12 +331,52 @@ void getTime(TimeInternal *time, Integer16 utc_offset)
  */
 void setTime(TimeInternal *time, Integer16 utc_offset)
 {
-  struct timeval tv;
-
 #ifdef CONFIG_MPC831X
   mpc831x_set_curr_time(time);
-#endif
+#elif defined(__WINDOWS__)
+    unsigned long long U64WindowsTime;
+    FILETIME           WindowsUTCTime;
+    SYSTEMTIME         WindowsSystemTime;
 
+
+    U64WindowsTime = (unsigned long long) time->seconds;
+    
+    // Change epoch in seconds from January 1, 1970
+    // to Windows January 1, 1901
+
+    U64WindowsTime += 1164447360ULL;
+
+    // Change seconds from January 1, 19701 UTC time to TAI time
+    
+    U64WindowsTime  -= (unsigned long long) utc_offset;
+
+    // Convert seconds to 100 ns increments since January 1, 1601
+
+    U64WindowsTime *= 10000ULL;
+
+    // Add in nanoseconds converted to 100 ns increments
+
+    U64WindowsTime += (unsigned long long)(time->nanoseconds / 100U);
+
+    // Convert unsigned long long 64 bit variable to
+    // File time structure time
+
+    WindowsUTCTime.dwLowDateTime  = (unsigned long)(U64WindowsTime & (unsigned long long)0xFFFFFFFF);
+    WindowsUTCTime.dwHighDateTime = (unsigned long)(U64WindowsTime >> 32);
+
+    // Convert Windows UTC "file time" to Windows UTC "system time"
+
+    FileTimeToSystemTime(&WindowsUTCTime, &WindowsSystemTime);
+
+    // Now finally we can set the windows system time
+    SetSystemTime(&WindowsSystemTime); // Sets the current system time
+
+#else
+  // Linux time type, simply need to convert nanoseconds
+  // to microseconds, subtract the TAI time UTC offset
+  // (leap seconds since January 1, 1970) and set
+  // the time
+  struct timeval tv;
   
   tv.tv_sec  = time->seconds;
   tv.tv_usec = time->nanoseconds/1000;
@@ -267,21 +384,29 @@ void setTime(TimeInternal *time, Integer16 utc_offset)
   /* PTP uses TAI, gettime of day is UTC, so adjust */
   tv.tv_sec  -= utc_offset;
   settimeofday(&tv, 0);
-  
+#endif  
+
   NOTIFY("setTime: resetting clock to TAI %ds %dns\n", time->seconds, time->nanoseconds);
 }
 
 UInteger16 getRand(UInteger32 *seed)
 {
+#ifdef __WINDOWS__
+    srand(*seed);
+    return((UInteger16)rand());
+#else
   return rand_r((unsigned int*)seed);
+#endif
 }
 
 short temp_debug_max_adjustments=0;
 
 Boolean adjFreq(Integer32 adj)
 {
+#ifndef __WINDOWS__
 #ifndef CONFIG_MPC831X
   struct timex t;
+#endif
 #endif
   
   if(adj > ADJ_FREQ_MAX)
@@ -293,6 +418,8 @@ Boolean adjFreq(Integer32 adj)
   if (++temp_debug_max_adjustments < 10000)
     mpc831x_adj_addend(adj);
   return (TRUE);
+#elif defined(__WINDOWS__)
+  return(!( SetSystemTimeAdjustment((adj/100),FALSE)));
 #else
   t.modes = MOD_FREQUENCY;
   t.freq = adj*((1<<16)/1000);

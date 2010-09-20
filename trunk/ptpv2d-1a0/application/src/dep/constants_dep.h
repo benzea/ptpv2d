@@ -36,7 +36,7 @@
 
 /* platform dependent */
 
-#if !defined(linux) && !defined(__NetBSD__) && !defined(__FreeBSD__)
+#if !defined(linux) && !defined(__NetBSD__) && !defined(__FreeBSD__) && !defined(__WINDOWS__)
 #error Not ported to this architecture, please update.
 #endif
 
@@ -60,6 +60,63 @@
 #endif
 #endif /* linux */
 
+#ifdef	__WINDOWS__
+//#include<winsock.h>
+#include<winsock2.h>
+#include<Ws2tcpip.h>
+#include <iphlpapi.h>
+#include<assert.h>
+#include<WinBase.h>
+#include<io.h>
+
+#ifndef IF_NAMESIZE              // Should be defined in Windows netioapi.h
+#define IF_NAMESIZE         256  // Windows maps interface names to NDIS names which are 256 bytes long
+#endif
+
+#ifndef IFNAMSIZ
+#define IFNAMSIZ            IF_NAMESIZE  // defined in Windows netioapi.h
+#endif
+
+
+
+#define IFACE_NAME_LENGTH   IF_NAMESIZE
+
+//#define INET_ADDRSTRLEN     16
+#define NET_ADDRESS_LENGTH  INET_ADDRSTRLEN
+
+#define IFCONF_LENGTH       10
+
+// AKB 2010-09-05: Windows uses normal sockets and opens them as raw
+// These constants are to map linux compatible raw
+// socket constants
+#define PF_PACKET AF_INET
+#define AF_PACKET AF_INET
+
+/* Windows only runs little endian */
+#define PTPD_LSBF
+
+#define PTPD_NO_DAEMON  1 // Windows code doesn't support background mode
+
+#ifndef STDOUT_FILENO
+#define STDOUT_FILENO 1
+#endif
+
+#ifndef STDERR_FILENO
+#define STDERR_FILENO 2
+#endif
+
+#pragma comment(lib, "IPHLPAPI.lib")
+
+#define WORKING_BUFFER_SIZE 15000
+#define MAX_TRIES 3
+
+#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+
+// Disable warnings about reopen function:
+#define _CRT_SECURE_NO_WARNINGS
+
+#endif /* __WINDOWS__*/
 
 #if defined(__NetBSD__) || defined(__FreeBSD__)
 # include <sys/types.h>

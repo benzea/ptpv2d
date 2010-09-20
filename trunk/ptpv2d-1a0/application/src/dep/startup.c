@@ -1,8 +1,14 @@
-/* src/dep/startup.c */
+/**
+ * @file src/dep/startup.c 
+ * @author Kendall Correl (original)
+ * @author Alan K. Bartky (enhancements, HW timestamping, comments, version 2 support)
+ * @license GPL Version 2
+ */
+
 /* System dependent Startup, initialization and shutdown functions for 
  * PTP daemon 
  */
-/* Copyright (c) 2005-2007 Kendall Correll */
+/* Copyright (c) 2005-2007 Kendall Correll (original work, version rc1) */
 
 /****************************************************************************/
 /* Begin additional copyright and licensing information, do not remove      */
@@ -34,11 +40,17 @@
 /****************************************************************************/
  
 #include "../ptpd.h"
+#ifdef __WINDOWS__
+// AKB: Windows Visual C library does not have optarg.
+// This includes the GNU version (LGPL license)
+#include "getopt.h"
+#endif
 
 PtpClock *ptpClock;
 
 int      output_fd;            // AKB: Added file descriptor so output file closed on exit
 
+#ifndef __WINDOWS__
 void catch_close(int sig)
 {
   char *s;
@@ -74,6 +86,7 @@ void catch_close(int sig)
   all_leds(FALSE);
   exit(0);
 }
+#endif
 
 void freePtpdMemory ()
 {
@@ -99,6 +112,10 @@ void ptpdShutdown()
   netShutdown(&ptpClock->netPath);
   freePtpdMemory();
   all_leds(FALSE);
+#ifdef __WINDOWS__
+  // Close down socket interface
+  WSACleanup();
+#endif
 }
 
 
@@ -109,7 +126,11 @@ int parseCommandLineArguments (int           argc,
                               )
 {
   int c;             // Current command option
+#ifdef __WINDOWS__
+  FILE * fd;
+#else
   int fd = -1;       // File descriptor
+#endif
 
   output_fd = 0;
   rtOpts->nonDaemon = FALSE; // Assume we are running in Daemon mode unless set otherwise
@@ -178,6 +199,11 @@ int parseCommandLineArguments (int           argc,
       break;
       
     case 'f':
+#ifdef __WINDOWS__
+      if ((fd = freopen( optarg, "w", (FILE *)stdout )) != (FILE *)NULL)
+      {
+          _dup2((int)fd, STDERR_FILENO);
+#else
       // Force console output to user specified filename 
       if((fd = creat(optarg,    // filename from command line
                      S_IRUSR    // Set to read only file, user class
@@ -187,6 +213,7 @@ int parseCommandLineArguments (int           argc,
       {
         dup2(fd, STDOUT_FILENO);
         dup2(fd, STDERR_FILENO);
+#endif
         output_fd = fd; /* Save file descriptor to close later on terminate */
         rtOpts->noClose = 1;
       }
@@ -223,14 +250,14 @@ int parseCommandLineArguments (int           argc,
       
     case 'a':
       // clock servo P and I attenuations (ap & ai in rtOpts)
-      rtOpts->ap = strtol(optarg, &optarg, 0);
+      rtOpts->ap = (Integer16)strtol(optarg, &optarg, 0);
       if(optarg[0])
-        rtOpts->ai = strtol(optarg+1, 0, 0);
+        rtOpts->ai = (Integer16)strtol(optarg+1, 0, 0);
       break;
       
     case 'w':
       // one way delay filter stiffness (s in rtOpts)
-      rtOpts->s = strtol(optarg, &optarg, 0);
+      rtOpts->s = (Integer16)strtol(optarg, &optarg, 0);
       break;
       
     case 'b':
@@ -254,12 +281,12 @@ int parseCommandLineArguments (int           argc,
       
     case 'o':
       // Offset from UTC
-      rtOpts->currentUtcOffset = strtol(optarg, &optarg, 0);
+      rtOpts->currentUtcOffset = (Integer16)strtol(optarg, &optarg, 0);
       break;
       
     case 'e':
       // Epoch number
-      rtOpts->epochNumber      = strtoul(optarg, &optarg, 0);
+      rtOpts->epochNumber      = (UInteger16)strtoul(optarg, &optarg, 0);
       break;
       
     case 'h':
@@ -269,7 +296,7 @@ int parseCommandLineArguments (int           argc,
       
     case 'y':
       // Sync interval in 2^NUMBER seconds (message per # seconds)
-      rtOpts->syncInterval = strtol(optarg, 0, 0);
+      rtOpts->syncInterval = (Integer8)strtol(optarg, 0, 0);
       DBGV("startup: syncInterval = %d\n",
            rtOpts->syncInterval
           );
@@ -277,7 +304,7 @@ int parseCommandLineArguments (int           argc,
       
     case 'Y':
       // Sync interval in 2^NUMBER seconds (message per # seconds)
-      rtOpts->announceInterval = strtol(optarg, 0, 0);
+      rtOpts->announceInterval = (Integer8)strtol(optarg, 0, 0);
       DBGV("startup: syncInterval = %d\n",
            rtOpts->announceInterval
           );
@@ -285,7 +312,7 @@ int parseCommandLineArguments (int           argc,
       
     case 'm':
       // Maximum number of of foreign master records
-      rtOpts->max_foreign_records = strtol(optarg, 0, 0);
+      rtOpts->max_foreign_records = (Integer16)strtol(optarg, 0, 0);
       if(rtOpts->max_foreign_records < 1)
         rtOpts->max_foreign_records = 1;
       break;
@@ -302,7 +329,7 @@ int parseCommandLineArguments (int           argc,
       
     case 's':
       // Clock stratum (number from 0 to 255 as specified in IEEE 1588)
-      rtOpts->clockStratum = strtol(optarg, 0, 0);
+      rtOpts->clockStratum = (UInteger8)strtol(optarg, 0, 0);
       if(rtOpts->clockStratum <= 0)
         rtOpts->clockStratum = 255;
       break;
@@ -328,17 +355,17 @@ int parseCommandLineArguments (int           argc,
       // send a management message of key, record, then exit
       rtOpts->probe = TRUE;
       
-      rtOpts->probe_management_key = strtol(optarg, &optarg, 0);
+      rtOpts->probe_management_key = (UInteger8)strtol(optarg, &optarg, 0);
       if(optarg[0])
-        rtOpts->probe_record_key = strtol(optarg+1, 0, 0);
+        rtOpts->probe_record_key = (UInteger16)strtol(optarg+1, 0, 0);
       
       rtOpts->nonDaemon = TRUE;   // Do not run as daemon to send management message,
                                   // run in command mode
       break;
       
     case 'r':
-      ERROR("The '-r' option has been removed because it is now the default behaviour.\n");
-      ERROR("Use the '-x' option to disable clock resetting.\n");
+      PERROR("The '-r' option has been removed because it is now the default behaviour.\n");
+      PERROR("Use the '-x' option to disable clock resetting.\n");
       *ret = 1;
       return 0;
 
@@ -389,7 +416,7 @@ int parseCommandLineArguments (int           argc,
 
     default:
       // Unknown option
-      ERROR("parseCommandLineArguments: Unknown option: %c\n",c);
+      PERROR("parseCommandLineArguments: Unknown option: %c\n",c);
       *ret = 1;
       return 0;
     }
@@ -463,14 +490,14 @@ int allocatePtpdMemory (Integer16 *ret, RunTimeOpts *rtOpts)
 
 PtpClock * ptpdStartup(int argc, char **argv, Integer16 *ret, RunTimeOpts *rtOpts)
 {
+    int i;
+    struct timespec     ts;
+#ifdef __WINDOWS__
+    WORD wVersionRequested;
+    WSADATA wsaData;
+    int err;
+#endif
 
-#ifdef PTPD_DBG
-#ifdef _POSIX_TIMERS
-#if _POSIX_TIMERS > 0
-
-
-struct timespec     ts;
-int i;
 
 /*
                  1         2         3         4         5         6         7         8
@@ -484,7 +511,9 @@ printf("ptpv2d: ****************************************************************
 printf("ptpv2d: For command line option help type: ptpv2d -?\n");
 printf("ptpv2d: **********************************************************************\n");
 
-
+#ifdef PTPD_DBG
+#ifdef _POSIX_TIMERS
+#if _POSIX_TIMERS > 0
 /*
 
 i = clock_getres(CLOCK_REALTIME, &ts);
@@ -513,10 +542,10 @@ printf("ptpv2d: %ld seconds and %ld nanoseconds\n", (long int) ts.tv_sec, (long 
 
   if (!parseCommandLineArguments(argc, argv, ret, rtOpts))
   {
-      return 0;
+      return NULL;
   }
 
-  // Dump command line arguments if -f option specified
+  // Dump command line arguments to file if -f option specified
   if (output_fd !=0)
   {
      for (i=0; i<argc; i++)
@@ -524,11 +553,11 @@ printf("ptpv2d: %ld seconds and %ld nanoseconds\n", (long int) ts.tv_sec, (long 
        printf("%s%c", argv[i], (i<argc-1) ? ' ' : '\n');
      }
   }
-  // Allocate memory for ptpd
+  // Allocate memory for ptpv2d
 
   if (!allocatePtpdMemory(ret, rtOpts))
   {
-      return 0;
+      return NULL;
   }
   
   // If we are here in the code, then all the parsing above was OK
@@ -564,10 +593,50 @@ printf("ptpv2d: %ld seconds and %ld nanoseconds\n", (long int) ts.tv_sec, (long 
 
   // Setup handling of termination signals
   // All are handled by the catch_close function above
-  
+
+#ifndef __WINDOWS__
   signal(SIGINT,  catch_close);  // Interrupt: (such as control-c) 
   signal(SIGTERM, catch_close);  // Terminate: (request to terminate)
   signal(SIGHUP,  catch_close);  // Hang-up:   (user session terminated)
+#else
+
+  // Startup the Winsock interface.  Currently coded for 
+  // Version 1.1
+
+
+/* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
+    wVersionRequested = MAKEWORD(2, 2);
+
+    err = WSAStartup(wVersionRequested, &wsaData);
+    if (err != 0) {
+        /* Tell the user that we could not find a usable */
+        /* Winsock DLL.                                  */
+        PERROR("ptpdStartup: WSAStartup failed with error: %d\n", err);
+        *ret=4;
+        return NULL;
+    }
+
+/* Confirm that the WinSock DLL supports 2.2.*/
+/* Note that if the DLL supports versions greater    */
+/* than 2.2 in addition to 2.2, it will still return */
+/* 2.2 in wVersion since that is the version we      */
+/* requested.                                        */
+
+    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) 
+    {
+        /* Tell the user that we could not find a usable */
+        /* WinSock DLL.                                  */
+        PERROR("ptpdStartup: Could not find a usable version of Winsock.dll\n");
+        WSACleanup();
+        *ret=5;
+        return NULL;
+    }
+    else
+    {
+        DBG("ptpdStartup: Winsock 2.2 dll was found and started up OK\n");
+    }
+
+#endif
   
   *ret = 0;
   DBG("ptpdStartup: completed OK\n");

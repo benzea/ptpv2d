@@ -41,6 +41,165 @@
 #include "../mpc831x.h"
 #endif
 
+#ifdef __WINDOWS__
+
+/* AKB added windows version of sendmsg and recvmsg */
+
+ssize_t recvmsg(SOCKET          sd,     /* Socket descriptor */
+                struct msghdr * msg,    /* Message structure */
+                int             flags   /* Socket flags      */
+               )
+{
+    ssize_t bytes_read;             /* Number of bytes read from socket */
+    ssize_t expected_recv_size;     /* Expected size of bytes to read   */
+    ssize_t left_to_move;           /* Amount of data left to move in copy loop */
+    char *  tmp_buf;
+    char *  tmp;
+    int     i;
+
+    assert(msg->msg_iov);
+    expected_recv_size = 0;
+
+    /* Loop through the IO Vector table, calculate
+     * total size to receive into the scatter/gather array
+     */
+    for (i=0; i < msg->msg_iovlen; i++)
+    {
+        expected_recv_size += msg->msg_iov[i].iov_len;
+    }
+
+    /* Get a temporary buffer based on that  size */
+    tmp_buf = malloc(expected_recv_size);
+
+    /* Make sure we got a buffer, otherwise return error */
+    if (!(tmp_buf))
+    {
+        /* Failed to get a buffer */
+        return -1;
+    }
+    
+    /* Get data from the socket */
+    left_to_move = bytes_read =
+        recvfrom(sd,
+                 tmp_buf,
+                 expected_recv_size,
+                 flags,
+                 (struct sockaddr *)msg->msg_name,
+                 &msg->msg_namelen
+                );
+    /* Loop and copy the data from the single large buffer
+     * to one or more IO vector buffers 
+     */
+    for (tmp = tmp_buf, i=0; i<msg->msg_iovlen; i++)
+    {
+        /* Test if done, if so, exit the loop */
+        if (left_to_move <=0)
+        {
+            /* Done, exit loop */
+            break;
+        }
+        /* Data still left to copy: */
+        assert(msg->msg_iov[i].iov_base);
+
+        /* Copy length or amount left to move, whatever
+         * is less
+         */
+        memcpy(msg->msg_iov[i].iov_base,
+               tmp,
+               MIN(msg->msg_iov[i].iov_len,left_to_move)
+              );
+        /* Update variables and continue copying if necessary */
+        left_to_move -= msg->msg_iov[i].iov_len;
+        tmp          += msg->msg_iov[i].iov_len;
+    }
+    /* All done copying, free the temporary buffer */
+    free(tmp_buf);
+
+    /* Return the number of bytes read */
+    return bytes_read;
+}
+
+
+ssize_t sendmsg(SOCKET          sd,     /* Socket descriptor */
+                struct msghdr * msg,    /* Message structure */
+                int             flags   /* Socket flags      */
+               )
+{
+    ssize_t bytes_sent;             /* Number of bytes sent from socket */
+    ssize_t expected_send_size;     /* Expected size of bytes to send   */
+    ssize_t left_to_move;           /* Amount of data left to move in copy loop */
+    char *  tmp_buf;
+    char *  tmp;
+    int     i;
+
+    assert(msg->msg_iov);
+    expected_send_size = 0;
+
+    /* Loop through the scatter/gather table, calculate
+     * total size to receive 
+     */
+    for (i=0; i < msg->msg_iovlen; i++)
+    {
+        expected_send_size += msg->msg_iov[i].iov_len;
+    }
+
+    /* Get a temporary buffer based on that  size */
+    tmp_buf = malloc(expected_send_size);
+
+    /* Make sure we got a buffer, otherwise return error */
+    if (!(tmp_buf))
+    {
+        /* Failed to get a buffer */
+        return -1;
+    }
+    
+    /* Loop and copy the data from the single large buffer
+     * to one or more IO vector buffers 
+     */
+    for (tmp = tmp_buf, left_to_move = expected_send_size, i=0; i<msg->msg_iovlen; i++)
+    {
+        /* Test if done, if so, exit the loop */
+        if (left_to_move <=0)
+        {
+            /* Done, exit loop */
+            break;
+        }
+        /* Data still left to copy: */
+        assert(msg->msg_iov[i].iov_base);
+
+        /* Copy length or amount left to move, whatever
+         * is less
+         */
+        memcpy(
+               tmp,
+               msg->msg_iov[i].iov_base,
+               MIN(msg->msg_iov[i].iov_len,left_to_move)
+              );
+        /* Update variables and continue copying if necessary */
+        left_to_move -= msg->msg_iov[i].iov_len;
+        tmp          += msg->msg_iov[i].iov_len;
+    }
+    
+    /* All done copying */
+    /* Send data to the socket */
+    left_to_move = bytes_sent =
+        sendto(sd,
+               tmp_buf,
+               expected_send_size,
+               flags,
+               (struct sockaddr *)msg->msg_name,
+               msg->msg_namelen
+              );
+
+    /* Data sent to the socket, free the temporary buffer */
+    free(tmp_buf);
+
+    /* Return the number of bytes sent */
+    return bytes_sent;
+}
+
+#endif /* #ifdef __WINDOWS__ added sendmsg and recvmsg */
+
 Boolean lookupSubdomainAddress(Octet *subdomainName, Octet *subdomainAddress)
 {
   UInteger32 h;
@@ -110,9 +269,9 @@ Boolean lookupSubdomainAddress(Octet *subdomainName, Octet *subdomainAddress)
             );
       break;
     default:
-      ERROR("lookupSubdomainAddress: handle out of range for '%s'!\n",
+      PERROR("lookupSubdomainAddress: handle out of range for '%s'!\n",
             subdomainName
-           );
+            );
       return FALSE;
     }
   }
@@ -136,15 +295,268 @@ UInteger8 lookupCommunicationTechnology(UInteger8 communicationTechnology)
   }
   
 #elif defined(BSD_INTERFACE_FUNCTIONS)
-  
+
+#elif defined(__WINDOWS__)
+
 #endif
   
   return PTP_DEFAULT;
 }
 
+#if defined(__WINDOWS__)
+
+int  WindowsFindAdapterData(
+    LPINTERFACE_INFO      pInterfaceData,  // pointer to data containing interface info
+    PIP_ADAPTER_ADDRESSES pAdapterData     // pointer to copy Data to adapter (once found)
+    )
+{
+    /* Declare and initialize variables */
+
+    DWORD dwSize   = 0;
+    DWORD dwRetVal = 0;
+
+    unsigned int i = 0;
+
+    //
+    // Set the flags to pass to GetAdaptersAddresses
+    // NOTE: Get all interfaces option is not supported
+    // for Microsoft Vista and later operating systems
+    //
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_ALL_INTERFACES;
+
+    // default to unspecified address family (both)
+    ULONG family;
+
+    LPVOID lpMsgBuf = NULL;
+
+    PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+    ULONG                 outBufLen  = 0;
+    ULONG                 Iterations = 0;
+
+    PIP_ADAPTER_ADDRESSES           pCurrAddresses = NULL;
+    PIP_ADAPTER_UNICAST_ADDRESS     pUnicast       = NULL;
+    PIP_ADAPTER_ANYCAST_ADDRESS     pAnycast       = NULL;
+    PIP_ADAPTER_MULTICAST_ADDRESS   pMulticast     = NULL;
+    IP_ADAPTER_DNS_SERVER_ADDRESS * pDnServer      = NULL;
+    IP_ADAPTER_PREFIX *             pPrefix        = NULL;
+
+    BOOL AdapterDataFound = FALSE;
 
 
-UInteger32 findIface(  /* Find interface, returns IP address of interface */
+    // Fixed search, only look for IPv4 capable adapters
+    family = AF_INET;
+
+
+    DBGV("WindowsFindAdapterData: searching for family %u",family);
+
+    // Allocate a 15 KB buffer to start with.
+    outBufLen = WORKING_BUFFER_SIZE;
+
+    do 
+    {
+        pAddresses = (IP_ADAPTER_ADDRESSES *) MALLOC(outBufLen);
+        if (pAddresses == NULL) 
+        {
+            PERROR("WindowsFindAdapterData: Memory allocation failed");
+            return FALSE;
+        }
+        //
+        // Get Windows list of adapter currently in the system
+        //
+        dwRetVal =
+            GetAdaptersAddresses(family, 
+                                 flags, 
+                                 NULL, 
+                                 pAddresses, 
+                                 &outBufLen
+                                );
+        // Make sure the buffer fits, otherwise
+        if (dwRetVal == ERROR_BUFFER_OVERFLOW) 
+        {
+            // Data was too large to fit.  
+            // Return the requested data to the system
+            PERROR("WindowsFindAdapterData: Adapter data doesn't fit");
+            FREE(pAddresses);
+            pAddresses = NULL;
+        } 
+        else 
+        {
+            // Data fit OK, exit the loop
+            break;
+        }
+
+        Iterations++;
+
+    } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
+
+    if (dwRetVal == NO_ERROR) 
+    {
+        // If successful, output some information from the data we received
+        pCurrAddresses = pAddresses;
+        // Loop through the structures, analyze them and print out the data
+        while (pCurrAddresses) 
+        {
+#ifdef DBGV_ENABLED
+            DBGV("WindowsAdapterData: Data for current address structure:");
+            DBGV("Length of the IP_ADAPTER_ADDRESS struct: %ld\n",
+                   pCurrAddresses->Length);
+            DBGV("WindowsFindAdapterData: IfIndex (IPv4 interface): %u\n", pCurrAddresses->IfIndex);
+
+            DBGV("\nAdapter name: %s\n", pCurrAddresses->AdapterName);
+            DBGV("Description:   %wS\n", pCurrAddresses->Description);
+            DBGV("Friendly name: %wS\n", pCurrAddresses->FriendlyName);
+
+            if (pCurrAddresses->PhysicalAddressLength != 0) 
+            {
+                DBGV("\nPhysical address: ");
+                for (i = 0; 
+                     i < (int) pCurrAddresses->PhysicalAddressLength;
+                     i++
+                    ) 
+                {
+                    if (i == (pCurrAddresses->PhysicalAddressLength - 1))
+                        DBGV("%.2X\n",
+                               (int) pCurrAddresses->PhysicalAddress[i]
+                              );
+                    else
+                        DBGV("%.2X-",
+                               (int) pCurrAddresses->PhysicalAddress[i]
+                              );
+                }
+            }
+            DBGV("Flags:..... %ld\n", pCurrAddresses->Flags);
+            DBGV("Mtu:....... %lu\n", pCurrAddresses->Mtu);
+            DBGV("IfType:.... %ld\n", pCurrAddresses->IfType);
+            DBGV("OperStatus: %ld\n", pCurrAddresses->OperStatus);
+            DBGV("\nIpv6IfIndex (IPv6 interface): %u\n",
+                   pCurrAddresses->Ipv6IfIndex);
+            DBGV("\nZoneIndices (hex): ");
+            for (i = 0; i < 16; i++)
+                DBGV("%lx ", pCurrAddresses->ZoneIndices[i]);
+            DBGV("\n");
+
+            DBGV("\nAdapter upper layer addresses:\n");
+            pAnycast = pCurrAddresses->FirstAnycastAddress;
+            i = 0;
+            while (pAnycast != NULL) 
+            {
+                i++;
+                pAnycast = pAnycast->Next;
+            }
+            DBGV("Number of Anycast    Addresses: %d\n", i);
+
+            pMulticast = pCurrAddresses->FirstMulticastAddress;
+            i=0;
+            while (pMulticast != NULL) 
+            {
+                i++;
+                pMulticast = pMulticast->Next;
+            } 
+            DBGV("Number of Multicast  Addresses: %d\n", i);
+
+            pDnServer = pCurrAddresses->FirstDnsServerAddress;
+            i=0;
+            while (pDnServer != NULL) 
+            {
+                i++;
+                pDnServer = pDnServer->Next;
+            } 
+            DBGV("Number of DNS Server Addresses: %d\n", i);
+            DBGV("DNS Suffix:.................... %wS\n", pCurrAddresses->DnsSuffix);
+
+            pPrefix = pCurrAddresses->FirstPrefix;
+            if (pPrefix) 
+            {
+                for (i = 0; pPrefix != NULL; i++)
+                    pPrefix = pPrefix->Next;
+                DBGV("Number of IP Adapter Prefix entries: %d\n", i);
+            } 
+            else
+                DBGV("Number of IP Adapter Prefix entries: 0\n");
+
+            DBGV("\n");
+#endif
+
+            // Scan through the Unicast data base 
+            // for this adapter and search for the IPv4 address
+            // from the interface table
+            pUnicast = pCurrAddresses->FirstUnicastAddress;
+            i = 0;
+            while (pUnicast != NULL) 
+            {
+                if (memcmp(pUnicast->Address.lpSockaddr->sa_data,
+                           pInterfaceData->iiAddress.Address.sa_data,
+                           sizeof(pUnicast->Address.lpSockaddr->sa_data)
+                          )==0
+                    )
+                {
+                    //
+                    // Match found for IP address data
+                    // Copy this adapter data to the caller's
+                    // adapter data structure
+                    //
+                    if (AdapterDataFound != TRUE)
+                    {
+                        memcpy(pAdapterData, 
+                               pCurrAddresses,
+                               sizeof(*pAdapterData)
+                              );
+                        AdapterDataFound = TRUE;
+                        DBGV("IP address Match found for adpater data, Unicast address index %u\n",i);
+                    }
+                }
+                i++;
+                pUnicast = pUnicast->Next;
+            }
+            DBGV("Number of Unicast    Addresses: %d\n", i);
+            pCurrAddresses = pCurrAddresses->Next;
+        }
+    } 
+    else 
+    {
+        DBGV("Call to GetAdaptersAddresses failed with error: %d\n",
+               dwRetVal
+              );
+        if (dwRetVal == ERROR_NO_DATA)
+            DBGV("No addresses were found for the requested parameters\n");
+        else 
+        {
+            if (
+                FormatMessage
+                   (
+                    FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                    FORMAT_MESSAGE_FROM_SYSTEM     | 
+                    FORMAT_MESSAGE_IGNORE_INSERTS, 
+                    NULL, 
+                    dwRetVal,                                  // error code
+                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+                    (LPTSTR) & lpMsgBuf, 
+                    0, 
+                    NULL
+                   )
+               ) 
+            {
+                DBGV("GetAdapterAddresses Error: %s", lpMsgBuf);
+                LocalFree(lpMsgBuf);
+                if (pAddresses)
+                    FREE(pAddresses);
+                return FALSE;
+            }
+        }
+    }
+
+    if (pAddresses) 
+    {
+        FREE(pAddresses);
+    }
+
+    return AdapterDataFound;
+}
+
+#endif
+
+/* Find interface, returns unsigned 32 bit IPv4 address of interface */
+UInteger32 findIface(  
                      Octet *     ifaceName,               /* Name (e.g. eth0 or NULL ptr) */
                      UInteger8 * communicationTechnology, /* Communication technology */
                      Octet *     uuid,                    /* UUID (to copy MAC address to */
@@ -154,20 +566,32 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
 #if defined(linux)
 
   /* depends on linux specific ioctls (see 'netdevice' man page) */
-  int i, flags;
-  struct ifconf data;
-  struct ifreq device[IFCONF_LENGTH];
+  int           i;
+  int           flags;                  // Interace status and capabilities flags
+  struct ifconf data;                   // Interface configuration data
+  struct ifreq  device[IFCONF_LENGTH];  // Interface request structure
   
-  data.ifc_len = sizeof(device);
-  data.ifc_req = device;
+  //
+  // Setup Interface configuration structure
+  //
+  data.ifc_len = sizeof(device);        // Set size
+  data.ifc_req = device;                // Set pointer to interface config data
+  memset(data.ifc_buf,0,data.ifc_len);  // Clear the buffer
   
-  memset(data.ifc_buf,0,data.ifc_len);
-  
+  //
+  // Minimum flags needed for Linux PTP general and
+  // event sockets are: 
+  // Interface UP
+  // Interface RUNNING
+  // Interface MULTICAST capable:
+  //
   flags = IFF_UP|IFF_RUNNING|IFF_MULTICAST;
   
-  /* look for an interface that is UP, RUNNING and MULTICAST
-   * if none specified 
-   */
+  // 
+  // We now either look for a valid interface we can
+  // use or try and bringup a user specified 
+  // specific interface.
+  //
   if(ifaceName[0] != '\0')
   {
     //
@@ -205,18 +629,27 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
   }
   else
   {
-    /* no iface specified */
-    /* get list of network interfaces*/
+    /* No interface name was specified: 
+     * get list of network interfaces
+     * look for an interface that is UP, RUNNING and MULTICAST
+     * Use IOCTL on event socket to get Interface configuration
+     * data for that socket
+     */
     if(ioctl(netPath->eventSock, SIOCGIFCONF, &data) < 0)
     {
       PERROR("findIface: failed query network interfaces");
       return 0;
     }
-    
     DBGV("findIface: eventSock %d Got Interface config data\n",
          netPath->eventSock
         );
 
+    /* Test if the length returned is greater
+     * than what we first allocated.
+     * If so, then this data may
+     * not reflect all devices. 
+     * If that is the case, print a debug warning message
+     */
     if(data.ifc_len >= sizeof(device))
     {
       DBG("findIface: device list may exceed allocated space\n");
@@ -230,11 +663,15 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
            device[i].ifr_name,
            inet_ntoa(((struct sockaddr_in *)&device[i].ifr_addr)->sin_addr)
            );
-      
+      /* Get device flags for this current interface */
       if     (ioctl(netPath->eventSock, SIOCGIFFLAGS, &device[i]) < 0)
       {
         DBGV("findIface: failed to get device flags\n");
       }
+      /*
+       * We have the flags, now check to see if this interface
+       * meets minimum requirements
+       */
       else if((device[i].ifr_flags&flags) != flags)
       {
         DBGV("findIface does not meet requirements (got: %08x, requested: %08x)\n",
@@ -242,6 +679,10 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
              flags
             );
       }
+      /*
+       * Interface meets minimum requirements, now get the hardware
+       * address (Ethernet MAC address) for this device
+       */
       else if(ioctl(netPath->eventSock, SIOCGIFHWADDR, &device[i]) < 0)
       {
         DBGV("findIface: failed to get hardware address\n");
@@ -257,7 +698,7 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
       }
       else
       {
-        DBGV("findIface: found interface (%s)\n", device[i].ifr_name);
+        DBGV("findIface: found an appropriate and running interface (%s)\n", device[i].ifr_name);
         
         memcpy(uuid, 
                device[i].ifr_hwaddr.sa_data,
@@ -276,14 +717,14 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
                IFACE_NAME_LENGTH
               );
         
-        break;
+        break;  /* Valid device found so we can exit the loop */
       }
     }
   }
   
   if(ifaceName[0] == '\0')
   {
-    ERROR("findIface: failed to find a usable interface\n");
+    PERROR("findIface: failed to find a usable interface\n");
     return 0;
   }
 
@@ -316,7 +757,7 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
      */
     netPath->rawIfIndex = device[i].ifr_ifindex;
 
-    /* Setup L2 Mulcast address for 802.1AS */
+    /* Setup L2 Multicast address for 802.1AS */
 
     device[i].ifr_hwaddr.sa_data[0] = 0x01;
     device[i].ifr_hwaddr.sa_data[1] = 0x80;
@@ -346,7 +787,7 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
     return 0;
   }
 
-  DBGV("findIface: returning, got IP address OK\n");
+  DBGV("findIface: Valid return, got IP address OK\n");
 
   return ((struct sockaddr_in *)&device[i].ifr_addr)->sin_addr.s_addr;
 
@@ -384,12 +825,12 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
   {
     if (ifaceName[0])
     {
-      ERROR("findIface(BSD): interface \"%s\" does not exist, or is not appropriate\n",
+      PERROR("findIface(BSD): interface \"%s\" does not exist, or is not appropriate\n",
             ifaceName
-           );
+            );
       return FALSE;
     }
-    ERROR("findIface(BSD): no suitable interfaces found!");
+    PERROR("findIface(BSD): no suitable interfaces found!");
     return FALSE;
   }
 
@@ -404,14 +845,14 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
 
   if (ifh == NULL)
   {
-    ERROR("findIface(BSD): could not get hardware address for interface \"%s\"\n", ifv4->ifa_name);
+    PERROR("findIface(BSD): could not get hardware address for interface \"%s\"\n", ifv4->ifa_name);
     return FALSE;
   }
 
   /* check that the interface TYPE is OK */
   if ( ((struct sockaddr_dl *)ifh->ifa_addr)->sdl_type != IFT_ETHER )
   {
-    ERROR("findIface(BSD): \"%s\" is not an ethernet interface!\n", ifh->ifa_name);
+    PERROR("findIface(BSD): \"%s\" is not an ethernet interface!\n", ifh->ifa_name);
     return FALSE;
   }
 
@@ -426,7 +867,269 @@ UInteger32 findIface(  /* Find interface, returns IP address of interface */
 
   return ((struct sockaddr_in *)ifv4->ifa_addr)->sin_addr.s_addr;
 
+#elif defined(__WINDOWS__)
+  int            i;
+  int            flags;                  // Interace status and capabilities flags
+  INTERFACE_INFO InterfaceList[20];      // Interface data list (note on stack instead of malloc()
+  unsigned long  nBytesReturned;
+  IP_ADAPTER_ADDRESSES AdapterData;      // Adapter adapter (once found)
+
+//L  struct ifconf data;                   // Interface configuration data
+//L  struct ifreq  device[IFCONF_LENGTH];  // Interface request structure
+  
+  //
+  // Setup Interface configuration structure
+  //
+  //L data.ifc_len = sizeof(device);        // Set size
+  //L data.ifc_req = device;                // Set pointer to interface config data
+  //L memset(data.ifc_buf,0,data.ifc_len);  // Clear the buffer
+  
+  //
+  // Minimum flags needed for Linux PTP general and
+  // event sockets are: 
+  // Interface UP
+  // Interface MULTICAST capable:
+  //
+  flags = IFF_UP |IFF_MULTICAST;
+  
+  // 
+  // We now either look for a valid interface we can
+  // use or try and bringup a user specified 
+  // specific interface.
+  //
+  // AKB TEMP FOR PORTATION, FORCES THIS OPTION FOR WINDOWS TO
+  // ALWAYS FALSE
+  // if(ifaceName[0] != '\0')
+  if (0)
+  {
+#if 0
+    //
+    // Interface was specified, copy to ifr_name
+    //
+    DBGV("findIface: specified interface: %s\n", ifaceName);
+    i = 0;
+    //L memcpy(device[i].ifr_name, ifaceName, IFACE_NAME_LENGTH);
+    strncpy(netPath->ifName, ifaceName, IFNAMSIZ);
+    
+    //
+    // Try and get the Hardware address for this interface name
+    //
+    if     (ioctl(netPath->eventSock, SIOCGIFHWADDR, &device[i]) < 0)
+    {
+      DBGV("findIface: failed to get hardware address\n");
+    }
+    else if((*communicationTechnology 
+             = lookupCommunicationTechnology(device[i].ifr_hwaddr.sa_family)
+            ) == PTP_DEFAULT
+           )
+    {
+      DBGV("findIface: unsupported communication technology (%d)\n",
+           *communicationTechnology
+          );
+    }
+    else
+    {
+      DBGV("findIface: communication technology OK (%d)\n",
+           *communicationTechnology
+          );
+      memcpy(uuid, device[i].ifr_hwaddr.sa_data, PTP_UUID_LENGTH);
+      memcpy(netPath->portMacAddress, device[i].ifr_hwaddr.sa_data, 6);
+    }
 #endif
+  }
+  else
+  {
+    /* No interface name was specified: 
+     * get list of network interfaces
+     * look for an interface that is UP, RUNNING and MULTICAST
+     * Use IOCTL on event socket to get Interface configuration
+     * data for that socket
+     */
+
+    if (WSAIoctl(netPath->eventSock,       // Socket descriptor
+                 SIO_GET_INTERFACE_LIST,   // Cmd: Get interface list
+                 NULL,                     // Input  buffer pointer (NULL)
+                 0,                        // Input  buffer size (bytes)
+                 &InterfaceList,           // Output buffer pointer
+			     sizeof(InterfaceList),    // Output buffer size
+                 &nBytesReturned,          // Number of bytes returned pointer
+                 NULL,                     // WSAOVERLAPPED struct pointer (only for overlapped sockets) 
+                 NULL                      // Completion routine pointer
+                ) == SOCKET_ERROR
+       )
+    {
+      PERROR("findIface: failed WSAIoctl get interface list");
+      return 0;
+    }
+    DBGV("findIface: eventSock %d Got Interface config data\n",
+         netPath->eventSock
+        );
+
+    /* Test if the length returned is greater
+     * than what we first allocated.
+     * If so, then this data may
+     * not reflect all devices. 
+     * If that is the case, print a debug warning message
+     */
+    if(nBytesReturned >= sizeof(InterfaceList))
+    {
+      DBG("findIface: socket address list may exceed allocated space\n");
+    }
+    
+    /* search through interfaces */
+    for(i=0; i < nBytesReturned/sizeof(InterfaceList[0]); ++i)
+    {
+      DBGV("findIface: Checking interface data index: %d\n",
+           i
+          );
+      /*
+       * For Windows, the basic flags are in the interface list
+       * so we check to see if they are OK to continue
+       * (Interface is UP and also Multicast capable)
+       */
+      if((InterfaceList[i].iiFlags & flags) != flags)
+      {
+        DBGV("findIface: Index %u does not meet requirements (got: %08x, requested: %08x)\n",
+             i,
+             InterfaceList[i].iiFlags,
+             flags
+            );
+        continue; // Flags no good, so keep looking
+      }
+      /*
+       * Interface meets minimum requirements, now get the hardware
+       * address (Ethernet MAC address) for this device
+       * Unlike Linux, Windows doesn't have an IOCTL for this, instead
+       * we use GetAdaptersAddresses and look for a match
+       * of the Valid IP address information we just found in the
+       * IP address interface list
+       */
+      if (WindowsFindAdapterData(&(InterfaceList[i]),&AdapterData)==FALSE)
+      {
+          //
+          // Adapter was not found for this IP address,
+          // Keep trying until we get a match on adapter versus
+          // address
+          //
+          DBGV("findIface: Could not find adapter for Index %u\n",i);
+          continue;
+      }
+      //
+      // Adapter found for this interface
+      // Check to make sure it is Ethernet
+      //
+      if (AdapterData.IfType != IF_TYPE_ETHERNET_CSMACD)
+      {
+          //
+          // Adapter is not Ethernet (or Ethernet like) interface
+          // Keep looking
+          //
+          DBGV("findIface: Index %u IF_TYPE: Not compliant, searching for %u, got %u\n",
+               i,
+               IF_TYPE_ETHERNET_CSMACD,
+               AdapterData.IfType
+              );
+          continue;
+      }
+      //
+      // Adapter data is OK, we can now finally copy the MAC
+      // address to appropriate structures
+      //
+      // AKB: for some reason, this is broken, will debug later
+      DBGV("findIface: found an appropriate and running interface (%WS)\n", 
+          AdapterData.FriendlyName
+          );
+      DBGV("findIface: (%WS)\n", 
+          AdapterData.Description
+          );        
+      memcpy(uuid, 
+             AdapterData.PhysicalAddress,
+             PTP_UUID_LENGTH
+            );
+      memcpy(netPath->portMacAddress,
+             AdapterData.PhysicalAddress,             
+             6
+            );
+      memcpy(ifaceName,
+             "eth0",      // Dummy for windows portation
+             IFACE_NAME_LENGTH
+            );
+      memcpy(netPath->ifName,
+             ifaceName,
+             IFACE_NAME_LENGTH
+            );
+       
+      break;  /* Valid device found so we can exit the loop */
+    }
+  }
+  
+  if(ifaceName[0] == '\0')
+  {
+    PERROR("findIface: failed to find a usable interface\n");
+    return 0;
+  }
+
+  /* Get Interface Index and store into netPath if 
+   * raw socket enabled
+   */
+
+  if (netPath->rawSock != -1)
+  {
+      DBGV("findIface: Processing raw socket %d\n",
+          netPath->rawSock
+          );
+#if 0
+    if(ioctl(netPath->rawSock, // Socket ID
+             SIOCGIFINDEX,     // Socket IO Command get interface index
+             &device[i]
+            ) == -1
+      )
+    {
+       printf("findIface: get ifindex error, socket: %d, device: %s!\n",
+              netPath->rawSock,
+              device[i].ifr_name
+             );
+       return 0;
+    }
+
+    DBGV("findIface: %s, got interface index: %d\n",
+           device[i].ifr_name,
+           device[i].ifr_ifindex
+        );
+
+    /* Store Interface Index into netPath structure for 
+     * later use
+     */
+    netPath->rawIfIndex = device[i].ifr_ifindex;
+
+    /* Setup L2 Multicast address for 802.1AS */
+
+    device[i].ifr_hwaddr.sa_data[0] = 0x01;
+    device[i].ifr_hwaddr.sa_data[1] = 0x80;
+    device[i].ifr_hwaddr.sa_data[2] = 0xC2;
+    device[i].ifr_hwaddr.sa_data[3] = 0x00;
+    device[i].ifr_hwaddr.sa_data[4] = 0x00;
+    device[i].ifr_hwaddr.sa_data[5] = 0x0E;
+
+    if((ioctl(netPath->rawSock, // Socket ID
+              SIOCADDMULTI,     // Socket IO Command Add multicast MAC address
+              &device[i]        // Interface Request data structure
+                  )) == -1)     // -1 if error
+    {
+       printf("findIface: set multicast MAC error device: %s, raw socket: %d!\n",
+              device[i].ifr_name,
+              netPath->rawSock
+             );
+       return 0;
+    }
+#endif
+  }
+  
+  DBGV("findIface: Valid return, got IP and MAC addresses OK\n");
+  return (InterfaceList[i].iiAddress.AddressIn.sin_addr.S_un.S_addr);
+
+#endif  // #ifdef __WINDOWS__
+
 }
 
 /* start all of the Netwok UDP and Layer 2 raw stuff */
@@ -494,23 +1197,12 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
     netPath->rawSock = -1;
   }
 
+
   /* validate user specified network interface,
    * or find and validate network interface 
    */
 
-  // AKB: new code for multiple port support.  If not bound to an interface, use port
-  // id number to specify ethernet interface to use eth0 + (port id - 1)
-  //
-  if (rtOpts->ifaceName[0] == '\0')
-  {
-      strncpy(interface_name, "eth0", IFACE_NAME_LENGTH);
-      interface_name[3] += (ptpClock->port_id_field -1);
-      DBGV("netInit: rtOpts->ifaceName port id: %d set to %s\n",
-           ptpClock->port_id_field,
-           interface_name
-          );
-  }
-  else
+  if (rtOpts->ifaceName[0] != '\0')
   {
      strncpy(interface_name, rtOpts->ifaceName, IFACE_NAME_LENGTH);
      DBGV("netInit: rtOpts->ifaceName port id: %d is specified as %s\n",
@@ -518,6 +1210,24 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
            interface_name
           );
   }
+  else
+  {
+#if (MAX_PTP_PORTS > 1)
+      //
+      // AKB: new code for multiple port support.  If not bound to an interface, use port
+      // id number to specify ethernet interface to use eth0 + (port id - 1)
+      //
+      strncpy(interface_name, "eth0", IFACE_NAME_LENGTH);
+      interface_name[3] += (ptpClock->port_id_field -1);
+      DBGV("netInit: rtOpts->ifaceName port id: %d set to %s\n",
+           ptpClock->port_id_field,
+           interface_name
+          );
+#else 
+      interface_name[0] = '\0';
+#endif
+  }
+
 
   interfaceAddr.s_addr  
         = findIface(interface_name,
@@ -571,7 +1281,7 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
   {
     DBG("netInit: failed to set socket reuse\n");
   }
-  DBG("netInit: socket reuse set OK\n");
+  DBGV("netInit: socket reuse set OK\n");
 
   /* bind sockets */
   /* need INADDR_ANY to allow receipt of multi-cast and uni-cast messages */
@@ -590,6 +1300,7 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
     PERROR("netInit: failed to bind event socket");
     return FALSE;
   }
+  DBGV("netInit: Socket bound to PTP event UDP port   0x%X\n",PTP_EVENT_PORT);
   
   addr.sin_port = htons(PTP_GENERAL_PORT);
   if(bind(netPath->generalSock,
@@ -601,6 +1312,7 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
     PERROR("netInit: failed to bind general socket");
     return FALSE;
   }
+  DBGV("netInit: Socket bound to PTP general UDP port 0x%X\n",PTP_EVENT_PORT);
   DBGV("netInit: event and general socket binds complete\n");
 
   if (rtOpts->ptp8021AS)
@@ -610,8 +1322,15 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
 
      bzero(&rawaddr, sizeof(rawaddr));
      rawaddr.sll_family   = AF_PACKET;
+#if defined(linux) || defined(__NetBSD__) || defined(__FreeBSD__)
+
+     // Windows opens up raw sockets as regular sockets
+     // and doesn't support these fields
      rawaddr.sll_ifindex  = netPath->rawIfIndex;
      rawaddr.sll_protocol = htons(0x88F7); 
+#else
+     // TBD on what Windows does here
+#endif
 
      if(bind(netPath->rawSock,
              (struct sockaddr*)&rawaddr,
@@ -635,6 +1354,13 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
 
      /* Setup L2 Mulcast address for 802.1AS */
 
+     /* AKB NOTE: This address is the one used for all messages
+      * by 802.1AS.  IEEE 1588 specifies the default mode
+      * for direct encapsulation as two different adresses,
+      * one for path message events and one for all others.
+      * This is not supported in the current code base
+      * but may be added in a future version.
+      */
      ptpClock->outputBuffer[2] = 0x01;
      ptpClock->outputBuffer[3] = 0x80;
      ptpClock->outputBuffer[4] = 0xC2;
@@ -664,8 +1390,6 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
   {
      DBGV("netInit: skipping bind of raw socket\n");
   }
-
-
   
   /* set general and port address */
   *(Integer16*)ptpClock->event_port_address   = PTP_EVENT_PORT;
@@ -673,11 +1397,16 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
   
   /* AKB: Setup PDelay Multicast address for V2 support */
 
+#ifdef __WINDOWS__
+  netAddr.s_addr = inet_addr(DEFAULT_PTP_PDELAY_ADDRESS);
+  if (netAddr.s_addr == INADDR_NONE)
+#else
   if(!inet_aton(DEFAULT_PTP_PDELAY_ADDRESS, &netAddr))
+#endif
   {
-    ERROR("netInit: failed to encode PDelay multicast address: %s\n",
+    PERROR("netInit: failed to encode PDelay multicast address: %s\n",
           DEFAULT_PTP_PDELAY_ADDRESS
-         );
+          );
     return FALSE;
   }
   // PDelay multicast address parsed OK, set unicast address to user specified value    
@@ -687,11 +1416,16 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
 
   if(rtOpts->unicastAddress[0])
   {
+    #ifdef __WINDOWS__
+    netAddr.s_addr = inet_addr(rtOpts->unicastAddress);
+    if (netAddr.s_addr == INADDR_NONE)
+    #else
     if(!inet_aton(rtOpts->unicastAddress, &netAddr))
+    #endif
     {
-      ERROR("netInit: failed to encode user specified uni-cast address: %s\n",
+      PERROR("netInit: failed to encode user specified uni-cast address: %s\n",
             rtOpts->unicastAddress
-           );
+            );
       return FALSE;
     }
     // Unicast address parsed OK, set unicast address to user specified value    
@@ -706,13 +1440,17 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
   /* resolve PTP subdomain */
   if(!lookupSubdomainAddress(rtOpts->subdomainName, addrStr))
   {
-    ERROR("netInit: failed lookup of multi-cast address: %s\n", addrStr);
+    PERROR("netInit: failed lookup of multi-cast address: %s\n", addrStr);
     return FALSE;
   }
-
+#ifdef __WINDOWS__
+  netAddr.s_addr = inet_addr(addrStr);
+  if (netAddr.s_addr == INADDR_NONE)
+#else
   if(!inet_aton(addrStr, &netAddr))
+#endif
   {
-    ERROR("netInit: failed to encode multi-cast address: %s\n", addrStr);
+    PERROR("netInit: failed to encode multi-cast address: %s\n", addrStr);
     return FALSE;
   }
   
@@ -813,7 +1551,8 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
     PERROR("netInit: failed to set the multi-cast time-to-live");
     return FALSE;
   }
-  
+
+//#ifdef SOCKET_TIMESTAMPING
 
   /* Enable IP multicast loopback.  This is so for Software based timestamping,
    *  all multicast frames we send will be looped back to us with a time stamp
@@ -847,6 +1586,7 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
     return FALSE;
   }
 
+#ifdef SOCKET_TIMESTAMPING
   /* make timestamps available through recvmsg() */
 
   temp = 1;
@@ -888,6 +1628,9 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
 #ifdef CONFIG_MPC831X
   mpc831x_netPath = netPath;
 #endif
+
+#endif /* #ifdef SW_LOOPBACK_TIMESTAMPING */
+
   return TRUE;
 }
 
@@ -896,20 +1639,18 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
 Boolean netShutdown(NetPath *netPath)
 {
   struct ip_mreq imr;
+#ifndef __WINDOWS__
   struct ifreq ifr;
+#endif
 
-  /* Setup Interface Request (raw socket)
-   * and IP Multicast Request (UDP socket)
-   * structures.
+  /* Setup IP Multicast Request (UDP socket)
+   * structure so we can first delete the mulicast
+   * membership prior to taking down the socket
    */
-  bzero(&ifr, sizeof(ifr));
-  strncpy((char *)ifr.ifr_name, netPath->ifName, IFNAMSIZ);
-  ifr.ifr_ifindex = netPath->rawIfIndex;
-
   imr.imr_multiaddr.s_addr = netPath->multicastAddr;
   imr.imr_interface.s_addr = htonl(INADDR_ANY);
 
-  // Drop IP Multicast membership on both UDP sockets
+  /* Drop IP Multicast membership on both UDP sockets */
 
   setsockopt(netPath->eventSock,
              IPPROTO_IP,
@@ -949,22 +1690,39 @@ Boolean netShutdown(NetPath *netPath)
   
   if(netPath->eventSock > 0)
   {
+#ifdef __WINDOWS__
+    closesocket(netPath->eventSock);
+#else
     close(netPath->eventSock);
+#endif
   }
   netPath->eventSock = -1;
   
   if(netPath->generalSock > 0)
   {
+#ifdef __WINDOWS__
+    closesocket(netPath->eventSock);
+#else
     close(netPath->generalSock);
+#endif
   }
   netPath->generalSock = -1;
 
   if(netPath->rawSock > 0)
   {
+
     /* Raw socket, Delete 802.1AS multicast Mac address from port 
      * and then close socket.
      */
-
+    /* Setup Interface Request (raw socket) structure.
+     */
+#ifndef __WINDOWS__
+    /* Windows uses regular socket, so we just close it and
+     * don't worry about the multicast address
+     */
+    bzero(&ifr, sizeof(ifr));
+    strncpy((char *)ifr.ifr_name, netPath->ifName, IFNAMSIZ);
+    ifr.ifr_ifindex = netPath->rawIfIndex;
     ifr.ifr_hwaddr.sa_data[0] = 0x01;
     ifr.ifr_hwaddr.sa_data[1] = 0x80;
     ifr.ifr_hwaddr.sa_data[2] = 0xC2;
@@ -978,8 +1736,12 @@ Boolean netShutdown(NetPath *netPath)
           &ifr              // Interface Request data structure
          );                 // -1 if error (not checked as we are closing anyway)
 
-
+    /* Close the raw socket */
     close(netPath->rawSock);
+#else
+    /* Close the raw socket */
+    closesocket(netPath->rawSock);
+#endif
   }
   netPath->rawSock = -1;
     
@@ -995,7 +1757,8 @@ Boolean netShutdown(NetPath *netPath)
 
 int netSelect(TimeInternal *timeout, NetPath *netPath)
 {
-  int ret, nfds;
+  int    ret;
+  SOCKET nfds;
   fd_set readfds;
   struct timeval tv, *tv_ptr;
   
@@ -1049,7 +1812,19 @@ int netSelect(TimeInternal *timeout, NetPath *netPath)
      * delivered. 
      */
     DBGV("netSelect: NULL timeout pointer, wait for event\n");
+#ifdef __WINDOWS__
+    //
+    // AKB 2010-09-19: I HAVEN'T COME UP WITH A GOOD WAY TO DO THIS YET
+    // NOT BEING A WINSOCK AND WINDOWS EXPERT.  TO
+    // CONTINUE PORTATION, FOR NOW, JUST SETTING TIMEOUT
+    // TO ONE HALF SECOND TO KEEP THE PORTATION WORK GOING
+    //
+    tv.tv_sec  = 0;
+    tv.tv_usec = 500000;
+    tv_ptr     = &tv;
+#else
     tv_ptr = 0;
+#endif
   }
 
   /* Find highest Number Socket for select() function */
@@ -1185,7 +1960,19 @@ int netSelectAll(TimeInternal *timeout, PtpClock *ptpClock)
      * delivered. 
      */
     DBGV("netSelectAll: NULL timeout pointer, wait for event\n");
+#ifdef __WINDOWS__
+    //
+    // AKB 2010-09-19: I HAVEN'T COME UP WITH A GOOD WAY TO DO THIS YET
+    // NOT BEING A WINSOCK AND WINDOWS EXPERT.  TO
+    // CONTINUE PORTATION, FOR NOW, JUST SETTING TIMEOUT
+    // TO ONE HALF SECOND TO KEEP THE PORTATION WORK GOING
+    //
+    tv.tv_sec  = 0;
+    tv.tv_usec = 500000;
+    tv_ptr     = &tv;
+#else
     tv_ptr = 0;
+#endif
   }
 
   /* Call select function to check all receive sockets with optional timeout */
@@ -1210,6 +1997,38 @@ int netSelectAll(TimeInternal *timeout, PtpClock *ptpClock)
   return ret;
 }
 
+#ifdef __WINDOWS__
+
+int netRecvSocketCheck(SOCKET sd)
+{
+  SOCKET nfds;
+  fd_set readfds;
+  struct timeval tv;
+
+  /* Copy currenct socket number to nfds */
+  nfds = sd;
+
+  /* Setup fd_set structure for select function */
+  FD_ZERO(&readfds);
+  FD_SET(sd,&readfds);
+
+  /* Set timeout to zero */
+  tv.tv_sec  = 0;
+  tv.tv_usec = 0;
+
+  /* Call select function for this socket, timeout zero
+   * to check if any data is available
+   */
+  return (select(nfds+1,
+                 &readfds,
+                 0,
+                 0,
+                 &tv
+                )
+         );
+}
+#endif
+
 ssize_t netRecvEvent(Octet *buf, 
                      TimeInternal *time,
                      NetPath *netPath
@@ -1219,11 +2038,15 @@ ssize_t netRecvEvent(Octet *buf,
   struct msghdr msg;
   struct iovec vec[1];
   struct sockaddr_in from_addr;
+
+#ifdef SOCKET_TIMESTAMPING
   union {
       struct cmsghdr cm;
       char control[CMSG_SPACE(sizeof(struct timeval))];
   } cmsg_un;
   struct cmsghdr *cmsg;
+#endif
+
   struct timeval *tv;
   
   vec[0].iov_base = buf;
@@ -1232,26 +2055,68 @@ ssize_t netRecvEvent(Octet *buf,
   memset(&msg,       0, sizeof(msg));
   memset(&from_addr, 0, sizeof(from_addr));
   memset(buf,        0, PACKET_SIZE);
+
+#ifdef SOCKET_TIMESTAMPING
   memset(&cmsg_un,   0, sizeof(cmsg_un));
-  
+#endif
+
+#ifdef __WINDOWS__
+  msg.msg_name       = &from_addr;
+#else
   msg.msg_name       = (caddr_t)&from_addr;
+#endif
+
   msg.msg_namelen    = sizeof(from_addr);
   msg.msg_iov        = vec;
   msg.msg_iovlen     = 1;
+#ifdef SOCKET_TIMESTAMPING
   msg.msg_control    = cmsg_un.control;
   msg.msg_controllen = sizeof(cmsg_un.control);
+#endif
   msg.msg_flags = 0;
 
   DBGV("netRecvEvent:   %s calling recvmsg,  socket: %d\n",
        netPath->ifName,
        netPath->eventSock
       );
-  
+
+#ifdef __WINDOWS__
+  /* AKB: Unfortunately windows doesn't support MSG_DONTWAIT
+   * So instead, we call select with a wait time of zero
+   * and then only process the event socket if there
+   * is something waiting.  That way we don't suspend here
+   */
+  if (netPath->eventSock == -1)
+  {
+      return 0;
+  }
+  ret = netRecvSocketCheck(netPath->eventSock);
+
+  /* Check return code to see if there is anything to process 
+   * For this select, there is something to process
+   * if there a return of 1 (1 socket to process)
+   */
+  if (ret == 1)
+  {
+      /* There is data on the socket, go ahead and get
+       * it without fear of blocking
+       */
+      ret = recvmsg(netPath->eventSock, 
+                    &msg, 
+                    0
+                    );
+  }
+
+#else
+  /* Non-Windows is much easier, just check for a message
+   * and use the don't wait flag 
+   */
   ret = recvmsg(netPath->eventSock, 
                 &msg, 
                 MSG_DONTWAIT
                );
-  
+#endif  
+  /* Check return code from recvmsg */
   if(ret <= 0)
   {
     if(errno == EAGAIN || errno == EINTR)
@@ -1266,44 +2131,47 @@ ssize_t netRecvEvent(Octet *buf,
     return ret;
   }
 
-
-
-
-
+#ifndef __WINDOWS__
   if(msg.msg_flags&MSG_TRUNC)
   {
-    ERROR("netRecvEvent:   received truncated message\n");
+    PERROR("netRecvEvent:   received truncated message\n");
     return 0;
   }
-  
+#endif
+
+#ifdef SOCKET_TIMESTAMPING
   /* get time stamp of packet */
   if(!time)
   {
-    ERROR("netRecvEvent:   null time stamp argument\n");
+    PERROR("netRecvEvent:   null time stamp argument\n");
     return 0;
   }
   
   if(msg.msg_flags&MSG_CTRUNC)
   {
-    ERROR("netRecvEvent:   truncated ancillary data\n");
+    PERROR("netRecvEvent:   truncated ancillary data\n");
     return 0;
   }
   
   if(msg.msg_controllen < sizeof(cmsg_un.control))
   {
-    ERROR("netRecvEvent:   short ancillary data (%d/%d)\n",
+    PERROR("netRecvEvent:   short ancillary data (%d/%d)\n",
       msg.msg_controllen, (int)sizeof(cmsg_un.control));
     
     return 0;
   }
+#endif
   
   tv = 0;
+
+#ifdef SOCKET_TIMESTAMPING
   for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg))
   {
     if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_TIMESTAMP)
       tv = (struct timeval *)CMSG_DATA(cmsg);
   }
-  
+#endif
+
   if(tv)
 #ifdef CONFIG_MPC831X
   {
@@ -1357,7 +2225,7 @@ ssize_t netRecvEvent(Octet *buf,
   /* Temp for debug: dump hex data *
 
   int i;
-
+#ifdef DBGM_ENABLED
   if ((debugLevel & 4) == 4 )
   {
     for (i=0; i<ret; i++)
@@ -1371,6 +2239,7 @@ ssize_t netRecvEvent(Octet *buf,
     }
     fprintf(stderr,"\n\n");
   }
+#endif
   * */
 
   return ret;
@@ -1386,7 +2255,37 @@ ssize_t netRecvGeneral(Octet *buf, NetPath *netPath)
        netPath->ifName,
        netPath->generalSock
       );
- 
+#ifdef __WINDOWS__
+  /* AKB: Unfortunately windows doesn't support MSG_DONTWAIT
+   * So instead, we call select with a wait time of zero
+   * and then only process the event socket if there
+   * is something waiting.  That way we don't suspend here
+   */
+  if (netPath->generalSock == -1)
+  {
+      return 0;
+  }
+  ret = netRecvSocketCheck(netPath->generalSock);
+
+  /* Check return code to see if there is anything to process 
+   * For this select, there is something to process
+   * if there a return of 1 (1 socket to process)
+   */
+  if (ret == 1)
+  {
+      /* There is data on the socket, go ahead and get
+       * it without fear of blocking
+       */
+      ret = recvfrom(netPath->generalSock,
+                     buf,
+                     PACKET_SIZE,
+                     0,
+                     (struct sockaddr *)&addr,
+                     &addr_len
+                    );
+  }
+
+#else
   ret = recvfrom(netPath->generalSock,
                  buf,
                  PACKET_SIZE,
@@ -1394,6 +2293,8 @@ ssize_t netRecvGeneral(Octet *buf, NetPath *netPath)
                  (struct sockaddr *)&addr,
                  &addr_len
                 );
+#endif
+
   if(ret <= 0)
   {
     if(errno == EAGAIN || errno == EINTR)
@@ -1414,7 +2315,7 @@ ssize_t netRecvGeneral(Octet *buf, NetPath *netPath)
   /* Temp for debug: dump hex data *
 
   int i;
-
+#ifdef DBGM_ENABLED
   if ((debugLevel & 4) == 4 )
   {
     for (i=0; i<ret; i++)
@@ -1428,6 +2329,7 @@ ssize_t netRecvGeneral(Octet *buf, NetPath *netPath)
     }
     fprintf(stderr,"\n\n");
   }
+#endif
   * */
 
   return ret;
@@ -1444,6 +2346,38 @@ ssize_t netRecvRaw(Octet *buf, NetPath *netPath)
        netPath->rawSock
       );
  
+#ifdef __WINDOWS__
+  /* AKB: Unfortunately windows doesn't support MSG_DONTWAIT
+   * So instead, we call select with a wait time of zero
+   * and then only process the event socket if there
+   * is something waiting.  That way we don't suspend here
+   */
+  if (netPath->rawSock == -1)
+  {
+      return 0;
+  }
+  ret = netRecvSocketCheck(netPath->rawSock);
+
+  /* Check return code to see if there is anything to process 
+   * For this select, there is something to process
+   * if there a return of 1 (1 socket to process)
+   */
+  if (ret == 1)
+  {
+      /* There is data on the socket, go ahead and get
+       * it without fear of blocking
+       */
+      ret = recvfrom(netPath->rawSock,
+                     buf,
+                     PACKET_SIZE,
+                     0,
+                     (struct sockaddr *)&addr,
+                     &addr_len
+                    );
+  }
+
+#else
+
   ret = recvfrom(netPath->rawSock,
                  buf,
                  PACKET_SIZE,
@@ -1451,6 +2385,8 @@ ssize_t netRecvRaw(Octet *buf, NetPath *netPath)
                  (struct sockaddr *)&addr,
                  &addr_len
                 );
+#endif
+
   if(ret <= 0)
   {
     if(errno == EAGAIN || errno == EINTR)
@@ -1473,7 +2409,7 @@ ssize_t netRecvRaw(Octet *buf, NetPath *netPath)
   /* Temp for debug: dump hex data 
 
   int i;
-
+#ifdef DBGM_ENABLED
   if ((debugLevel & 4) == 4 )
   {
     for (i=0; i<ret; i++)
@@ -1487,6 +2423,7 @@ ssize_t netRecvRaw(Octet *buf, NetPath *netPath)
     }
     fprintf(stderr,"\n\n");
   }
+#endif
   * */
 
   return ret;
@@ -1502,6 +2439,7 @@ ssize_t netSendEvent(Octet *buf, UInteger16 length, NetPath *netPath, Boolean pd
 
   int i;
 
+#ifdef DBGM_ENABLED
   if ((debugLevel & 4) == 4 )
   {
     for (i=0; i<length; i++)
@@ -1511,10 +2449,11 @@ ssize_t netSendEvent(Octet *buf, UInteger16 length, NetPath *netPath, Boolean pd
          fprintf(stderr, "\nnetSendEvent:   ");
          fprintf(stderr, "%4.4x:", i);
       }
-      fprintf(stderr, " %2.2x", buf[i]);
+      fprintf(stderr, " %2.2x", (UInteger8)buf[i]);
     }
     fprintf(stderr,"\n\n");
   }
+#endif
   /* */
   
   addr.sin_family      = AF_INET;
@@ -1583,7 +2522,7 @@ ssize_t netSendGeneral(Octet *buf, UInteger16 length, NetPath *netPath, Boolean 
   /* Temp for debug: dump hex data */
 
   int i;
-
+#ifdef DBGM_ENABLED
   if ((debugLevel & 4) == 4 )
   {
     for (i=0; i<length; i++)
@@ -1593,11 +2532,11 @@ ssize_t netSendGeneral(Octet *buf, UInteger16 length, NetPath *netPath, Boolean 
          fprintf(stderr, "\nnetSendGeneral: ");
          fprintf(stderr, "%4.4x:", i);
       }
-      fprintf(stderr, " %2.2x", buf[i]);
+      fprintf(stderr, " %2.2x", (UInteger8)buf[i]);
     }
     fprintf(stderr,"\n\n");
   }
-
+#endif
   /* */
   
   addr.sin_family      = AF_INET;
@@ -1664,13 +2603,12 @@ ssize_t netSendRaw(Octet *buf, UInteger16 length, NetPath *netPath)
 {
   ssize_t ret;
   struct  sockaddr_ll rawaddr;
+  int     i;
 
   DBGV("netSendRaw: buf %p, length: %d\n", buf, length);
 
-  /* Temp for debug: dump hex data */
-
-int i;
-
+  /* Dump hex data if message level debugging enabled */
+#ifdef DBGM_ENABLED
   if ((debugLevel & 4) == 4 )
   {
   
@@ -1685,13 +2623,18 @@ int i;
     }
     fprintf(stderr,"\n\n");
   }
-
+#endif
   /* */
 
   bzero(&rawaddr, sizeof(rawaddr));
   rawaddr.sll_family   = AF_PACKET;
+
+#ifndef __WINDOWS__
+  // Windows raw sockets uses normal sockets, TDB on how to or if
+  // we need to support these fields
   rawaddr.sll_ifindex  = netPath->rawIfIndex;
   rawaddr.sll_protocol = htons(0x88F7); 
+#endif
 
   ret = sendto(netPath->rawSock,
                buf,

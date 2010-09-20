@@ -577,9 +577,10 @@ typedef struct {
   Boolean       tx_sync_time_pending;
   Boolean       tx_delay_req_time_pending;
   Boolean       tx_pdelay_resp_time_pending;
+#endif
+  /* AKB moved to support raw sockets besides MPC831X */
   TimeInternal  tx_complete_poll_timeout;  // AKB: Added to support raw sockets
 
-#endif
 
   /* Misc. additions for V2 support */
   UInteger8     tx_transport_specific; /* For setting of field in first byte of all V2 messages */

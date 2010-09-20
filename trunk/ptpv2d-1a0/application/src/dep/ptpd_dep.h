@@ -40,26 +40,38 @@
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
+
+#ifndef __WINDOWS__
 #include<unistd.h>
+#endif
+
 #include<errno.h>
 #include<signal.h>
 #include<fcntl.h>
 #include<sys/stat.h>
 #include<time.h>
+
+#ifndef __WINDOWS__
 #include<sys/time.h>
 #include<sys/timex.h>
 #include<sys/socket.h>
 #include<sys/select.h>
 #include<sys/ioctl.h>
 #include<arpa/inet.h>
+#endif
 
 /* System configuration info */
 
 #define MAX_PTP_PORTS 1
 
 /* system messages */
-#define ERROR(x, ...)  fprintf(stderr, "\n(ptp error) " x, ##__VA_ARGS__)
-#define PERROR(x, ...) fprintf(stderr, "\n(ptp error) " x ": %m\n", ##__VA_ARGS__)
+
+// AKB 2010-09-11: Removed ERROR as it is used as a standard lib
+// call for some C compilers.  Globally replaced "ERROR" with
+// PERROR in the code
+//#define ERROR(x, ...)  fprintf(stderr, "\n(ptp error)  " x, ##__VA_ARGS__)
+
+#define PERROR(x, ...) fprintf(stderr, "\n(ptp error)  " x ": %m\n", ##__VA_ARGS__)
 #define NOTIFY(x, ...) fprintf(stderr, "\n(ptp notice) " x, ##__VA_ARGS__)
 
 /* debug messages */
@@ -71,6 +83,8 @@
 #define PTPD_DBG
 #define DBGV(x, ...) if ((debugLevel & 2) == 2 ) fprintf(stderr, "(ptp debugV) " x, ##__VA_ARGS__)
 #define DBGM(x, ...) if ((debugLevel & 4) == 4 ) fprintf(stderr, "(ptp debugM) " x, ##__VA_ARGS__)
+#define DBGM_ENABLED
+#define DBGV_ENABLED
 #else
 #define DBGV(x, ...)
 #define DBGM(x, ...)
@@ -78,6 +92,7 @@
 
 #ifdef PTPD_DBG
 #define DBG(x, ...)  if ((debugLevel & 1)==1)  fprintf(stderr, "(ptp debug)  " x, ##__VA_ARGS__)
+#define DBG_ENABLED
 extern int debugLevel;
 #else
 #define DBG(x, ...)

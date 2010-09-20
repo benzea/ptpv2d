@@ -139,7 +139,7 @@ void toInternalTime(TimeInternal *internal, TimeRepresentation *external, Boolea
   
   if(external->nanoseconds & ~INT_MAX)
   {
-    internal->seconds     = -(external->seconds % INT_MAX);
+    internal->seconds     = -(external->seconds     % INT_MAX);
     internal->nanoseconds = -(external->nanoseconds & INT_MAX);
   }
   else
@@ -161,7 +161,7 @@ void v2ToInternalTime(TimeInternal *internal, V2TimeRepresentation *external)
   
   if(external->nanoseconds & ~INT_MAX)
   {
-    internal->seconds     = -(external->seconds % INT_MAX);
+    internal->seconds     = -(external->seconds     % INT_MAX);
     internal->nanoseconds = -(external->nanoseconds & INT_MAX);
   }
   else
