@@ -1312,7 +1312,7 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
     PERROR("netInit: failed to bind general socket");
     return FALSE;
   }
-  DBGV("netInit: Socket bound to PTP general UDP port 0x%X\n",PTP_EVENT_PORT);
+  DBGV("netInit: Socket bound to PTP general UDP port 0x%X\n",PTP_GENERAL_PORT);
   DBGV("netInit: event and general socket binds complete\n");
 
   if (rtOpts->ptp8021AS)
