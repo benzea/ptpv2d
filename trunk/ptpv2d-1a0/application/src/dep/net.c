@@ -1078,7 +1078,7 @@ UInteger32 findIface(
       DBGV("findIface: Processing raw socket %d\n",
           netPath->rawSock
           );
-#if 0
+#ifndef __WINDOWS__
     if(ioctl(netPath->rawSock, // Socket ID
              SIOCGIFINDEX,     // Socket IO Command get interface index
              &device[i]
