@@ -5,8 +5,9 @@ Copyright (c) 2010 Alan K. Bartky, all rights reserved
 ﻿Comments on the wiki?  Email [mailto:alan@bartky.net?subject=ptpv2d%20Wiki%20Comments alan@bartky.net]
 
    * [Introduction Introduction]
+   * [News News]
    * [PTPCCodeOverview PTP C Code Overview]
-   * [DebugPrintMessageExamples Debug Print Message Examples] 
+   * [DebugPrintMessageExamples Debug Print Message Examples]
    * (Placeholder for future sections)
    * ptpv2d wiki maintenance and info
      * [http://code.google.com/p/ptpv2d/w/list List & Search Wiki Pages] 
