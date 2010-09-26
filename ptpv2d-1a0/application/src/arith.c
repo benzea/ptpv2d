@@ -30,7 +30,33 @@
 /*                                                                          */
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
- 
+
+/* AKB: 2010-09-25: Added doxygen style comments */
+
+/**
+ * @file arith.c
+ * Miscellaneous arithmetic subroutines and functions used
+ * by ptpv2d software.
+ *
+ * @par Original Copyright
+ * This file is a derivative work from ptpd.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancement Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (arith.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */ 
 #include "ptpd.h"
 
 #define NSEC 1000000000
@@ -41,7 +67,17 @@
 #define REMAINDER_NSECS(nsec_time, sec_time)\
 	( (Integer32) (nsec_time - (((Integer64)sec_time) * NSEC)) )
 
-/* from annex C of the 1588 version 1 spec */
+/** 
+ * Function to calculate 32 bit CRC based on algorithm
+ *  from annex C of the 1588 version 1 spec 
+ *
+ * @param[in] buf       Pointer to 8 bit data bytes to calculate CRC for
+ * @param[in] length    Number of bytes to calculate CRC
+ *
+ * @return          
+ * Returns 32 bit CRC as calulcated based on the pointer to the bytes
+ * and number of bytes to calculate the CRC for.
+ */
 UInteger32 crc_algorithm(Octet *buf, Integer16 length)
 {
   Integer16 i;
@@ -70,6 +106,18 @@ UInteger32 crc_algorithm(Octet *buf, Integer16 length)
   return crc^0xffffffff;
 }
 
+/**
+ * Function to calculate the unsigned 32 bit sum of a sequence of 
+ * unsigned 32 bit bytes.
+ *
+ * @param[in] buf       Pointer to 8 bit data bytes to calculate the sum for
+ * @param[in] length    Number of bytes to calculate sum
+ *
+ * @return          
+ * Returns 32 bit sum as calulcated based adding up all the 8 bit bytes specified
+ * with the result being a 32 bit sum of the byte values.
+ */
+ 
 UInteger32 sum(Octet *buf, Integer16 length)
 {
   UInteger32 sum = 0;
@@ -80,6 +128,36 @@ UInteger32 sum(Octet *buf, Integer16 length)
   return sum;
 }
 
+/**
+ * Function to convert time from internal time used by ptpv2d
+ * software of signed seconds, signed nanoseconds, to 
+ * PTP version 2 time representation of unsigned seconds,
+ * signed seconds, Boolean of half epoch and 16 bit unsigned
+ * integer of epoch.
+ *
+ * @param[in] internal       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds and signed nanoseconds which is to be converted
+ * to PTP version 2 time format (external time)
+ *
+ * @param[out] external       
+ * Pointer to V2TimeRepresentation structure containing PVP
+ * version 2 message time representation of unsigned
+ * seconds and signed nanoseconds which is to be converted
+ * from ptpv2d software internal time format and stored in 
+ * the structure
+ *
+ * @param[in] halfEpoch 
+ * Boolean parameter, TRUE if current data is past year 
+ * 2038, otherwise set to false
+ *
+ * @param[in] epoch
+ * Unsigned 16 bit epoch number as specified in PTP version
+ * 2 standard.  This is for dates even farther in the future
+ * than 2038.
+ *
+ */ 
 void v2FromInternalTime(TimeInternal         *internal, // signed secs,   signed nanoseconds
                         V2TimeRepresentation *external, // unsigned secs, signed nanoseconds
                         Boolean               halfEpoch,// current date past year 2038
@@ -108,6 +186,30 @@ void v2FromInternalTime(TimeInternal         *internal, // signed secs,   signed
       );
 }
 
+/**
+ * Function to convert time from internal time used by ptpv2d
+ * software of signed seconds, signed nanoseconds, to 
+ * PTP version 1 time representation of unsigned seconds,
+ * signed seconds and Boolean of half epoch.
+ *
+ * @param[in] internal       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds and signed nanoseconds which is to be converted
+ * to PTP version 1 time format (external time)
+ *
+ * @param[out] external       
+ * Pointer to TimeRepresentation structure containing PVP
+ * version 1 message time representation of unsigned
+ * seconds and signed nanoseconds which is to be converted
+ * from ptpv2d software internal time format and stored in 
+ * the structure
+ *
+ * @param[in] halfEpoch 
+ * Boolean parameter, TRUE if current data is past year 
+ * 2038, otherwise set to false
+ *
+ */ 
 void fromInternalTime(TimeInternal       *internal, // signed secs,   signed nanoseconds
                       TimeRepresentation *external, // unsigned secs, signed nanoseconds
                       Boolean halfEpoch             // Half Epoch flag (for time past year 2038)
@@ -133,6 +235,30 @@ void fromInternalTime(TimeInternal       *internal, // signed secs,   signed nan
       );
 }
 
+/**
+ * Function to convert time to internal time used by ptpv2d
+ * software of signed seconds, signed nanoseconds, from
+ * PTP version 1 time representation of unsigned seconds,
+ * signed seconds and Boolean of half epoch.
+ *
+ * @param[out] internal       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds and signed nanoseconds which is to be converted
+ * from PTP version 1 time format (external time)
+ * and stored in the structure.
+ *
+ * @param[in] external       
+ * Pointer to TimeRepresentation structure containing PTP
+ * version 1 message time representation of unsigned
+ * seconds and signed nanoseconds which is to be converted
+ * to ptpv2d software internal time format
+ *
+ * @param[out] halfEpoch 
+ * Boolean parameter, set to 0 if current data is not past year 
+ * 2038, otherwise set to non-zero.
+ *
+ */ 
 void toInternalTime(TimeInternal *internal, TimeRepresentation *external, Boolean *halfEpoch)
 {
   *halfEpoch = external->seconds / INT_MAX;
@@ -156,6 +282,25 @@ void toInternalTime(TimeInternal *internal, TimeRepresentation *external, Boolea
       );
 }
 
+/**
+ * Function to convert time to internal time used by ptpv2d
+ * software of signed seconds, signed nanoseconds, from
+ * PTP version 2 time representation of unsigned seconds,
+ * signed seconds.
+ *
+ * @param[out] internal       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds and signed nanoseconds which is to be converted
+ * from PTP version 2 time format (external time)
+ * and stored in the structure.
+ *
+ * @param[in] external       
+ * Pointer to TimeRepresentation structure containing PTP
+ * version 2 message time representation of unsigned
+ * seconds and signed nanoseconds which is to be converted
+ * to ptpv2d software internal time format
+ */ 
 void v2ToInternalTime(TimeInternal *internal, V2TimeRepresentation *external)
 {
   
@@ -178,6 +323,23 @@ void v2ToInternalTime(TimeInternal *internal, V2TimeRepresentation *external)
       );
 }
 
+/**
+ * Function to apply PTP version 2 Signed 64 bit correction
+ * time to a current value of time represented
+ * in ptpv2d software of signed seconds and signed nanoseconds
+ *
+ * @param[in,out] internal       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds and signed nanoseconds for which the PTP
+ * version 2 message correction time is to be applied
+ * to.
+ *
+ * @param[in] external       
+ * Unsigned 64 bit PTP version 2 correction time value 
+ * to be applied to the ptpv2d internal time value
+ *
+ */ 
 void v2CorrectionToInternalTime(TimeInternal *internal, Integer64 external)
 {
   /* This code is optimized for speed (avoid a divide if at all possible) */
@@ -214,6 +376,26 @@ void v2CorrectionToInternalTime(TimeInternal *internal, Integer64 external)
       );
 }
 
+
+/**
+ * Function to do fixup of time after based
+ * on calling other routines here in arith.c
+ * This function "noramlizes" the time by making
+ * sure that after time additions, subtractions
+ * etc. that the nanoseconds field if between
+ * -999,999,999 and +999,999,999 and as
+ * necessary, the seconds field is adjusted if
+ * the nanosecond time is outside of those
+ * boundaries.
+ *
+ *
+ * @param[in,out] result       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds and signed nanoseconds for which the 
+ * time values are "normalized".
+ *
+ */ 
 static void normalizeTime(TimeInternal *result)
 {
   result->seconds     += result->nanoseconds/1000000000;
@@ -231,6 +413,30 @@ static void normalizeTime(TimeInternal *result)
   }
 }
 
+/**
+ * Function to add two ptpv2d time values
+ * as represented by ptpv2d internal time
+ * of signed seconds and signed nanosecond
+ *
+ * @param[out] result       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds and signed nanoseconds for which the 
+ * add result (x+y) is stored to.
+ *
+ * @param[out] x       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds for "x".
+ *
+ * @param[out] y
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds for "y".
+ *
+ * @see normalizeTime
+ * @see subtractTime
+ */ 
 void addTime(TimeInternal *result, TimeInternal *x, TimeInternal *y)
 {
   result->seconds     = x->seconds     + y->seconds;
@@ -239,6 +445,30 @@ void addTime(TimeInternal *result, TimeInternal *x, TimeInternal *y)
   normalizeTime(result);
 }
 
+/**
+ * Function to subtract two ptpv2d time values
+ * as represented by ptpv2d internal time
+ * of signed seconds and signed nanosecond
+ *
+ * @param[out] result       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds and signed nanoseconds for which the 
+ * subtract result (x-y) is stored to.
+ *
+ * @param[out] x       
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds for "x".
+ *
+ * @param[out] y
+ * Pointer to TimeInternal structure containing ptpv2d
+ * code internal time representation of signed
+ * seconds for "y".
+ *
+ * @see normalizeTime
+ * @see addTime
+ */ 
 void subTime(TimeInternal *result, TimeInternal *x, TimeInternal *y)
 {
   result->seconds     = x->seconds     - y->seconds;
@@ -313,6 +543,13 @@ Integer64 getNanoseconds(TimeInternal *time)
          );
 }
 
+/** 
+ * Function to check TimeInternal representation time is
+ * zero seconds and zero nanoseconds.
+ *
+ * @return Returns 0 if time is zero, else returns
+ * non-zero
+ */
 Boolean isNonZeroTime(TimeInternal *time)
 {
   return (   time->seconds     != 0 

@@ -33,6 +33,11 @@
 
 #include "ptpd.h"
 
+/** 
+ * Main function to setup the PTP main data as pointed to
+ * by struct PtpClock based on data passed from run
+ * time option data pointed to by struct RunTimeOpts
+ */
 void initData(RunTimeOpts * rtOpts,   // Pointer to Run Time Options
               PtpClock *    ptpClock  // Pointer to PTP main data
              )
@@ -152,9 +157,6 @@ int return_value;
          8
         );
 
-
-   
-
 #ifdef PTPD_DBG
 /* AKB: Debug Function to dump PTP V2 header and first timestamp from
  * raw buffer
@@ -164,7 +166,10 @@ int return_value;
 
 }
 
-/* see spec table 18 in 1588 v1 and table 13 in 1588 v2 */
+/**
+ * Function to handle "m1" for PTP version 1 and version 2
+ * See spec table 18 in 1588 v1 and table 13 in 1588 v2 
+ */
 /* AKB: Added V2 init of vars for m1 */
 void m1(PtpClock *ptpClock)
 {
@@ -230,11 +235,13 @@ void m1(PtpClock *ptpClock)
 
 }
 
-/* see IEEE 1588 version 1: spec table 21 */
-
-void s1(MsgHeader *header,   // Pointer to unpacked PTP version 1 header
-        MsgSync   *sync,     // Pointer to unpacked PTP version 1 sync message data
-        PtpClock  *ptpClock  // Pointer to main PTP data structure
+/** 
+ * Function to handle "s1" for PTP version 1.  
+ * See IEEE 1588 version 1: spec table 21 
+ */
+void s1(MsgHeader *header,   /**< Pointer to unpacked PTP version 1 header */
+        MsgSync   *sync,     /**< Pointer to unpacked PTP version 1 sync message data */
+        PtpClock  *ptpClock  /**< Pointer to main PTP data structure */
        )
 {
   DBGV("s1:\n");
@@ -528,12 +535,11 @@ B:
     return -1;  /* B1 */
 }
 
-/* Function to test for Best Master between two sync messages */
-
-UInteger8 bmcStateDecision(MsgHeader   *header,  // PTP header info
-                           MsgSync     *sync,    // Sync message data
-                           RunTimeOpts *rtOpts,  // Run time options
-                           PtpClock    *ptpClock // Main PTP data structure
+/** PTP version 1 Function to test for Best Master between two sync messages */
+UInteger8 bmcStateDecision(MsgHeader   *header,  /**< PTP header info */
+                           MsgSync     *sync,    /**< Sync message data */
+                           RunTimeOpts *rtOpts,  /**< Run time options */
+                           PtpClock    *ptpClock /**< Main PTP data structure */
                           )
 {
   /* Test if run time option is set for Slave only, 
@@ -588,8 +594,7 @@ UInteger8 bmcStateDecision(MsgHeader   *header,  // PTP header info
   }
 }
 
-// Best Master Clock (bmc) function:
-
+/** PTP version 1 Best Master Clock (bmc) function */
 UInteger8 bmc(ForeignMasterRecord *foreign, 
               RunTimeOpts         *rtOpts,
               PtpClock            *ptpClock

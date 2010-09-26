@@ -30,6 +30,32 @@
 /*                                                                          */
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
+
+/**
+ * @file servo.c
+ *
+ * Clock servo (clock adjustment and tracking) algorithm rountines for PTP
+ *
+ * @par Original Copyright
+ * This file is a derivative work from servo.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (servo.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
+
 #include "../ptpd.h"
 
 void initClockVars(RunTimeOpts *rtOpts, PtpClock *ptpClock)
@@ -71,9 +97,9 @@ void initClock(RunTimeOpts *rtOpts, PtpClock *ptpClock)
   }
 }
 
-void updatePathDelay(one_way_delay_filter *owd_filt,  // one way delay filter
-                     RunTimeOpts          *rtOpts,    // run time options
-                     PtpClock             *ptpClock   // PTP main data structure
+void updatePathDelay(one_way_delay_filter *owd_filt,  /**< one way delay filter */
+                     RunTimeOpts          *rtOpts,    /**< run time options */
+                     PtpClock             *ptpClock   /**< PTP main data structure */
                     )
 {
   Integer16 s;
@@ -241,11 +267,11 @@ void updatePathDelay(one_way_delay_filter *owd_filt,  // one way delay filter
       );
 }
 
-void updateDelay(TimeInternal *         send_time, // Delay Req. sent by slave time
-                 TimeInternal *         recv_time, // Delay Req. received by master time
-                 one_way_delay_filter * owd_filt,  // one way delay filter
-                 RunTimeOpts *          rtOpts,    // run time options
-                 PtpClock *             ptpClock   // PTP main data structure
+void updateDelay(TimeInternal *         send_time, /**< Delay Req. sent by slave time */
+                 TimeInternal *         recv_time, /**< Delay Req. received by master time */
+                 one_way_delay_filter * owd_filt,  /**< one way delay filter */
+                 RunTimeOpts *          rtOpts,    /**< run time options */
+                 PtpClock *             ptpClock   /**< PTP main data structure */
                 )
 {
   Integer16 s;
@@ -330,16 +356,16 @@ void updateDelay(TimeInternal *         send_time, // Delay Req. sent by slave t
 }
 
 
-/* updateOffset:
-   Filter function for calculating Offset from Master
-   when running in PTP_SLAVE mode.
-*/
-
-void updateOffset(TimeInternal *              send_time,  // Sync message reported Transmit time
-                  TimeInternal *              recv_time,  // Sync message local    Receive  time
-                  offset_from_master_filter * ofm_filt,   // Offset from Master filter
-                  RunTimeOpts *               rtOpts,     // Run Time Options
-                  PtpClock *                  ptpClock    // PTP main data structure
+/**
+ * @fn updateOffset
+ * Filter function for calculating Offset from Master
+ * when running in PTP_SLAVE mode.
+ */
+void updateOffset(TimeInternal *              send_time,  /**< Sync message reported Transmit time */
+                  TimeInternal *              recv_time,  /**< Sync message local    Receive  time */
+                  offset_from_master_filter * ofm_filt,   /**< Offset from Master filter */
+                  RunTimeOpts *               rtOpts,     /**< Run Time Options */
+                  PtpClock *                  ptpClock    /**< PTP main data structure */
                  )
 {
   DBGV("updateOffset:\n");

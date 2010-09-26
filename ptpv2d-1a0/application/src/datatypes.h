@@ -31,27 +31,59 @@
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
 
+/**
+ * @file datatypes.h
+ * General data structures, typedefs, etc. definitions for PTP
+ *
+ * @par Original Copyright
+ * This file is a derivative work from datatypes.h
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (datatypes.h) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
+
 #ifndef DATATYPES_H
 #define DATATYPES_H
 
-typedef struct {
+typedef struct 
+{
   UInteger32 seconds;
   Integer32  nanoseconds;  
 } TimeRepresentation;
 
 
-typedef struct {
+typedef struct 
+{
   UInteger16 epoch_number;
   UInteger32 seconds;
   Integer32  nanoseconds;  
 } V2TimeRepresentation;
 
-typedef struct {
+/** 
+ * Internal time structure used by ptpv2d.  
+ * Uses time in signed seconds and signed nanoseconds
+ */
+typedef struct 
+{
   Integer32 seconds;
   Integer32 nanoseconds;  
 } TimeInternal;
 
-typedef struct {
+typedef struct 
+{
   Integer32  interval;
   Integer32  left;
   Boolean    expire;
@@ -59,18 +91,20 @@ typedef struct {
 
 /* AKB: New types for IEEE 1588 v2 */
 
-typedef struct {
+typedef struct 
+{
   Octet            clockIdentity[8];
   UInteger16       portNumber;
 } PortIdentity;
 
-typedef struct {
+typedef struct 
+{
   UInteger8        clockClass;
   Enumeration8     clockAccuracy;
   UInteger16       offsetScaledLogVariance;
 } ClockQuality;
 
-/* 1588 Version 1 common Message header */
+/* IEEE 1588 PTP Version 1 common Message header */
 typedef struct {
                                                       // Offset  Length (bytes)
   UInteger16   versionPTP;                            // 00       2
@@ -86,8 +120,9 @@ typedef struct {
   Octet        flags[2];                              // 34       2
 } MsgHeader;
 
-/* 1588 Version 2 common Message header */
-typedef struct {
+/** IEEE 1588 and IEEE 802.1AS PTP Version 2 common Message header structure */
+typedef struct 
+{
                                                       // Offset  Length (bytes)
   UInteger8    transportSpecificAndMessageType;       // 00       1 (2 4-bit fields)
   UInteger8    reserved1AndVersionPTP;                // 01       1 (2 4-bit fields)
@@ -103,8 +138,9 @@ typedef struct {
   UInteger8    logMeanMessageInterval;                // 33       1
 } V2MsgHeader;
 
-/* Version 1 Sync or Delay_Req message */
-typedef struct {
+/** PTP Version 1 Sync or Delay_Req message structure */
+typedef struct 
+{
   TimeRepresentation  originTimestamp;
   UInteger16          epochNumber;
   Integer16           currentUTCOffset;
@@ -133,17 +169,18 @@ typedef struct {
 
 typedef MsgSync MsgDelayReq;
 
-/* Version 2 Sync or Delay_Req message */
-
-typedef struct {
+/* PTP Version 2 Sync or Delay_Req message structure */
+typedef struct 
+{
                                                       // Offset  Length (bytes)
   V2TimeRepresentation originTimestamp;               // 34       10
 } V2MsgSync;
 
 typedef V2MsgSync V2MsgDelayReq;
 
-/* Version 2 Announce message */
-typedef struct {
+/** PTP Version 2 Announce message structure */
+typedef struct 
+{
                                                       // Offset  Length (bytes)
   V2TimeRepresentation originTimestamp;               // 34       10
   Integer16            currentUTCOffset;              // 44        2
@@ -161,22 +198,23 @@ typedef struct {
 } MsgAnnounce;
 
 
-/* Follow_Up message */
-typedef struct {
+/** PTP Version 1 Follow_Up message structure */
+typedef struct 
+{
   UInteger16          associatedSequenceId;
-  TimeRepresentation  preciseOriginTimestamp;
-  
+  TimeRepresentation  preciseOriginTimestamp;  
 } MsgFollowUp;
 
-/* Version 2 Follow Up message */
-
-typedef struct {
+/** PTP Version 2 Follow Up message structure */
+typedef struct 
+{
   V2TimeRepresentation preciseOriginTimestamp;
 } V2MsgFollowUp;
 
 
-/* Delay_Resp message */
-typedef struct {
+/** Delay_Resp message structure */
+typedef struct 
+{
   TimeRepresentation  delayReceiptTimestamp;
   UInteger8           requestingSourceCommunicationTechnology;
   Octet               requestingSourceUuid[PTP_UUID_LENGTH];
@@ -187,35 +225,40 @@ typedef struct {
 
 /* Other V2 messages */
 
-typedef struct {
+typedef struct 
+{
   V2TimeRepresentation receiveTimestamp;
   PortIdentity         requestingPortId;
 } V2MsgDelayResp;
   
 
-typedef struct {
+typedef struct 
+{
   V2TimeRepresentation originTimestamp;
   Octet                reserved[10];
 } V2MsgPDelayReq;
 
-typedef struct {
+typedef struct 
+{
   V2TimeRepresentation requestReceiptTimestamp;
   PortIdentity         requestingPortId;
 } V2MsgPDelayResp;
 
-typedef struct {
+typedef struct 
+{
   V2TimeRepresentation responseOriginTimestamp;
   PortIdentity         requestingPortId;
 } V2MsgPDelayRespFollowUp;
 
-/* V2 Signaling and Management messages (note does not contina any TLVs) */
-
-typedef struct {
+/** V2 Signaling and Management messages (note does not contain any TLVs) */
+typedef struct 
+{
   PortIdentity         targetPortIdentity;
   /* One or more TLVs afterwards */
 } V2MsgSignaling;
 
-typedef struct {
+typedef struct 
+{
   PortIdentity         targetPortIdentity;
   UInteger8            startingBoundaryHops;
   UInteger8            boundaryHops;
@@ -224,7 +267,7 @@ typedef struct {
 } V2MsgManagement;
 
 
-/* Management message */
+/** Management message structure */
 typedef union
 {
   struct ClockIdentity
@@ -338,7 +381,7 @@ typedef struct {
 
 } MsgManagement;
 
-/* Foreign Master database record */
+/** Foreign Master database record structure */
 typedef struct
 {
   UInteger8   foreign_master_communication_technology;
@@ -357,7 +400,7 @@ typedef struct
 
 } ForeignMasterRecord;
 
-/* main program data structure */
+/** Main program data structure for ptpv2d */
 typedef struct {
   /* Default data set */
   /* V1: */
@@ -468,20 +511,20 @@ typedef struct {
   UInteger8     v2_msg_type;
   UInteger8     rx_transport_specific;
 
-  /* Foreign master data set */
+  /** Foreign master data set */
   ForeignMasterRecord *foreign;
   
   /* Other things we need for the protocol */
   Boolean halfEpoch;
   
-  Integer16  max_foreign_records;
+  Integer16  max_foreign_records;  /**< Current number of max foreign records */
   Integer16  foreign_record_i;
   Integer16  foreign_record_best;
   Boolean    record_update;
   UInteger32 random_seed;
   
-  MsgHeader   msgTmpHeader;
-  V2MsgHeader v2MsgTmpHeader;  /* AKB: Added for V2 support */
+  MsgHeader   msgTmpHeader;    /**< PTP Version 1 temporary message header data */
+  V2MsgHeader v2MsgTmpHeader;  /**< PTP Version 2 temporary message header data (AKB: Added for V2 support) */
   
   union {
     MsgSync                 sync;
@@ -501,17 +544,18 @@ typedef struct {
     V2MsgManagement         v2manage;
   } msgTmp;
 
-  V2MsgHeader currentRxPDelayReqHeader;  /* AKB: used to create PDELAY response and followup */
+  V2MsgHeader currentRxPDelayReqHeader;  /**< Used to create PDELAY response and followup */
 
-  /* Pointers to payload area of buffers (to allow adding MAC header) */
-
+  /** Output buffer pointer to payload area of buffers (to allow adding MAC header) */
   Octet * msgObuf;  
+
+  /** Input buffer pointer to payload area of buffers (to allow adding MAC header) */
   Octet * msgIbuf;
 
   /* Actual storage for characters */
   
-  Octet outputBuffer[(PACKET_SIZE+16)];  // Packet size plus size for MAC header
-  Octet inputBuffer[(PACKET_SIZE+16)];
+  Octet outputBuffer[(PACKET_SIZE+16)];  /**< Output buffer array: Packet size plus size for MAC header */
+  Octet inputBuffer[(PACKET_SIZE+16)];   /**< Output buffer array: Packet size plus size for MAC header */
   
   TimeInternal  master_to_slave_delay;
   TimeInternal  slave_to_master_delay;
@@ -519,42 +563,50 @@ typedef struct {
   /* Storage for message timestamp calculations */
   
   /* Delay Request mechanism, version 1 and version 2 PTP */
-  TimeInternal  t1_sync_tx_time;      // Time from master from SYNC (1 step) or FOLLOW UP (2 step)
-  TimeInternal  t2_sync_rx_time;      // Time at slave of inbound SYNC message
-  TimeInternal  t3_delay_req_tx_time; // Time at slave of outbound DELAY REQ
-  TimeInternal  t4_delay_req_rx_time; // Time from master from DELAY RESP
+  TimeInternal  t1_sync_tx_time;      /**< Time from master from SYNC (1 step) or FOLLOW UP (2 step) */
+  TimeInternal  t2_sync_rx_time;      /**< Time at slave of inbound SYNC message */
+  TimeInternal  t3_delay_req_tx_time; /**< Time at slave of outbound DELAY REQ */
+  TimeInternal  t4_delay_req_rx_time; /**< Time from master from DELAY RESP */
 
-  TimeInternal  t1_pdelay_req_tx_time;  // Time at requestor of outbound PDELAY REQ
-  TimeInternal  t2_pdelay_req_rx_time;  // Time from responder, reported in PDELAY RESP
-  TimeInternal  t3_pdelay_resp_tx_time; // Time from responder, reported in PDELAY RESP FOLLOWUP
-  TimeInternal  t4_pdelay_resp_rx_time; // Time at requestor
+  TimeInternal  t1_pdelay_req_tx_time;  /**< Time at requestor of outbound PDELAY REQ */
+  TimeInternal  t2_pdelay_req_rx_time;  /**< Time from responder, reported in PDELAY RESP */
+  TimeInternal  t3_pdelay_resp_tx_time; /**< Time from responder, reported in PDELAY RESP FOLLOWUP */
+  TimeInternal  t4_pdelay_resp_rx_time; /**< Time at requestor */
 
-  /* Receive correction time in Internal time for V2 calculations */
+  /** Receive Sync correction time in Internal time for V2 calculations */
   TimeInternal  sync_correction;
+
+  /** Receive Follow up correction time in Internal time for V2 calculations */
   TimeInternal  followup_correction;
+
+  /** Receive Delay Response correction time in Internal time for V2 calculations */
   TimeInternal  delay_resp_correction;
+
+  /** Receive PDelay Response correction time in Internal time for V2 calculations */
   TimeInternal  pdelay_resp_correction;
+
+  /** Receive PDelay Follow Up correction time in Internal time for V2 calculations */
   TimeInternal  pdelay_followup_correction;
 
   // AKB: For new filter to set initial time based on delta time calculations
-  TimeInternal  t1_sync_delta_time;  // time between transmitted sync messages
-  TimeInternal  t2_sync_delta_time;  // time between received    sync message
+  TimeInternal  t1_sync_delta_time;  /**< time between transmitted sync messages */
+  TimeInternal  t2_sync_delta_time;  /**< time between received    sync messages */
 
   Boolean       pdelay_resp_rx_two_step_flag;  // Used to select proper equation to use 
   
   UInteger16  Q;
   UInteger16  R;
   
-  Boolean     sentDelayReq;     // Used for both Delay and PDelay request
+  Boolean     sentDelayReq;     /**< NOTE: Used for both Delay and PDelay request */
 
   UInteger16  sentDelayReqSequenceId;
 
-  Boolean     waitingForFollow; // Indicates two step Sync received, waiting for RX follow up
-  Boolean     waitingForPDelayRespFollow; // Indicates two step PDelay Response received
+  Boolean     waitingForFollow; /**< Indicates two step Sync received, waiting for RX follow up */
+  Boolean     waitingForPDelayRespFollow; /**< Indicates two step PDelay Response received */
 
-  Boolean     sentSync;         // Sync Transmitted from Application
+  Boolean     sentSync;         /**< Sync Transmitted from Application */
 
-  Boolean     sentPDelayResp;   // PDelay Response transmitted from application
+  Boolean     sentPDelayResp;   /** PDelay Response transmitted from application */
 
   Boolean     receivedPDelayResp;
   
@@ -568,12 +620,12 @@ typedef struct {
   NetPath netPath;
 
   /* Clock control */
-  Integer32     baseAdjustValue;      // AKB: Added to support setting/calc of base value
-  Integer32     lastAdjustValue;      // AKB: for storing calculated adjust value
+  Integer32     baseAdjustValue;      /**< AKB: Added to support setting/calc of base value */
+  Integer32     lastAdjustValue;      /**< AKB: for storing calculated adjust value */
 
 #ifdef CONFIG_MPC831X
-  UInteger32    timerAddValue;        // AKB: Added to support changing HW clock frequency
-  Boolean       tx_time_pending;      // AKB: Added to poll for HW transmit time
+  UInteger32    timerAddValue;        /**< AKB: Added to support changing HW clock frequency */
+  Boolean       tx_time_pending;      /**< AKB: Added to poll for HW transmit time */
   Boolean       tx_sync_time_pending;
   Boolean       tx_delay_req_time_pending;
   Boolean       tx_pdelay_resp_time_pending;
@@ -587,8 +639,9 @@ typedef struct {
   
 } PtpClock;
 
-/* program options set at run-time */
-typedef struct {
+/** Main structure for program options set at run-time */
+typedef struct 
+{
   Integer8      syncInterval;
   Octet         subdomainName[PTP_SUBDOMAIN_NAME_LENGTH];
   Octet         clockIdentifier[PTP_CODE_STRING_LENGTH];
@@ -603,8 +656,8 @@ typedef struct {
   Boolean       displayStats;
   Boolean       csvStats;
   Octet         unicastAddress[NET_ADDRESS_LENGTH];
-  Integer16     ap, ai;               // P/I Filter values
-  Integer16     s;                    // Filter "stiffness"
+  Integer16     ap, ai;               /**< P/I Filter values */
+  Integer16     s;                    /**< Filter "stiffness" */
   TimeInternal  inboundLatency, outboundLatency;
   Integer16     max_foreign_records;
   Boolean       slaveOnly;
@@ -612,22 +665,24 @@ typedef struct {
   UInteger8     probe_management_key;
   UInteger16    probe_record_key;
   Boolean       halfEpoch;
-  Boolean       ptpv2;                // AKB: Flag added to support Version 2 Y/N
-  Boolean       ptp8021AS;            // AKB: Flag added to support 802.1AS PTP Y/N
-  Boolean       pdelay;               // AKB: Flag added to support Pdelay Y/N
-  Integer32     baseAdjustValue;      // AKB: Added to support setting/calc of base value
-  Boolean       rememberAdjustValue;  // AKB: Added to support Slave remembering masters clock
-  Integer8      announceInterval;     // AKB: Added to support V2 announce message transmit timer
+  Boolean       ptpv2;                /**< AKB: Flag added to support Version 2 Y/N */
+  Boolean       ptp8021AS;            /**< AKB: Flag added to support 802.1AS PTP Y/N */
+  Boolean       pdelay;               /**< AKB: Flag added to support Pdelay Y/N */
+  Integer32     baseAdjustValue;      /**< AKB: Added to support setting/calc of base value */
+  Boolean       rememberAdjustValue;  /**< AKB: Added to support Slave remembering masters clock */
+  Integer8      announceInterval;     /**< AKB: Added to support V2 announce message transmit timer */
 
-  Boolean       nonDaemon;            // AKB: Added to split parser from startup function
-                                      // nonDaemon (TRUE == command mode (non-daemon)
-                                      // FALSE == daemon mode)
+  Boolean       nonDaemon;            /**< AKB: Added to split parser from startup function */
+                                      /**< nonDaemon (TRUE == command mode (non-daemon)
+                                       *   FALSE == daemon mode)
+                                       */
 
-  int           noClose;       // noClose option for daemon function (send output to file option
-                               // sets this variable to 1)
+  int           noClose;       /**< noClose option for daemon function (send output to file option
+                                *   sets this variable to 1)
+                                */
 
 #ifdef CONFIG_MPC831X
-  UInteger32    hwClockPeriod;        // AKB: Added to support changing HW clock frequency
+  UInteger32    hwClockPeriod; /**< AKB: Added to support changing HW clock frequency */
 
 #endif
   

@@ -28,12 +28,31 @@
 /* End Alan K. Bartky copyright notice: Do not remove                       */
 /****************************************************************************/
 
+/* AKB: 2010-09-25: Added doxygen style comments */
+
+/**
+ * @file v2bmc.c
+ * Main entry point for ptpv2d PTP daeamon 
+ *
+ * @par Copyright
+ * This file (v2bmc.c) contains original work by Alan K. Bartky
+ *
+ * @par
+ * Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
 #include "ptpd.h"
 
 #ifdef PTPD_DBG
-/* AKB: Debug Function to dump data set info
+/** 
+ * Debug Function to dump PTP Clock data set info
  */
-
 void debug_dump_data_set_info(PtpClock *ptpClock)
 {
 
@@ -166,10 +185,13 @@ void debug_dump_data_set_info(PtpClock *ptpClock)
 }
 
 #endif
-  
-void v2_s1(V2MsgHeader *header,   // Pointer to unpacked PTP Version 2 header
-           MsgAnnounce *announce, // Pointer to unpacked PTP Version 2 announce message data
-           PtpClock    *ptpClock  // Pointer to main PTP data structure
+/**
+ * Main function to handle "S2" state processing for PTP version 2
+ * state machine.  See IEEE 1588 version 2 for details.
+ */  
+void v2_s1(V2MsgHeader *header,   /**< Pointer to unpacked PTP Version 2 header */
+           MsgAnnounce *announce, /**< Pointer to unpacked PTP Version 2 announce message data */
+           PtpClock    *ptpClock  /**< Pointer to main PTP data structure */
           )
 {
   DBGV("v2_s1:\n");
@@ -253,17 +275,24 @@ void v2copyD0(V2MsgHeader *header,
   header->sequenceId                    = ptpClock->grandmaster_sequence_number;
 }
 
-/* return similar to memcmp()s
- * Returns positive if A is better than B, 0 if they are equal, 
- * negative if B is better than A
+/**
+ * Function to do a dataset comparison between Version
+ * 2 data sets between 2 external foreign master (A and B)
+ * clocks.  
+ *
+ * @par
+ * This function in operation, is similar to memcmp()s
+ * in that it Returns positive if A is better than B, 0 if they are equal, 
+ * and negative if B is better than A
  */
-
-Integer8 v2bmcDataSetComparison(V2MsgHeader *headerA, 
-                                MsgAnnounce *announceA,
-                                V2MsgHeader *headerB,
-                                MsgAnnounce *announceB,
-                                PtpClock    *ptpClockA,
-                                PtpClock    *ptpClockB   // For future full multi port support
+Integer8 v2bmcDataSetComparison(V2MsgHeader *headerA,  /**< Pointer to Version 2 PTP message header data for Clock A */
+                                MsgAnnounce *announceA,/**< Pointer to Version 2 PTP announce data  for Clock A */
+                                V2MsgHeader *headerB,  /**< Pointer to Version 2 PTP message header data for Clock B */
+                                MsgAnnounce *announceB,/**< Pointer to Version 2 PTP announce data for Clock B */
+                                PtpClock    *ptpClockA,/**< Pointer to data set information for Clock A */
+                                PtpClock    *ptpClockB /**< Pointer to data set information for Clock B 
+                                                        *   NOTE: For future full multi port support
+                                                        */
                                )
 {
 int memcmp_result;
@@ -448,12 +477,11 @@ int memcmp_result;
   }
 }
 
-/* Function to test for Best Master between two announce messages */
-
-UInteger8 v2bmcStateDecision(V2MsgHeader *header,   // PTP header info
-                             MsgAnnounce *announce, // Announce message data
-                             RunTimeOpts *rtOpts,   // Run time options
-                             PtpClock    *ptpClock  // Main PTP data structure
+/** Function to test for Best Master between two announce messages */
+UInteger8 v2bmcStateDecision(V2MsgHeader *header,   /**< Pointer to PTP header info */
+                             MsgAnnounce *announce, /**< Pointer to Announce message data */
+                             RunTimeOpts *rtOpts,   /**< Pointer to Run time options */
+                             PtpClock    *ptpClock  /**< Pointer to main PTP data structure */
                             )
 {
   /* Test if run time option is set for Slave only, 
@@ -517,8 +545,27 @@ UInteger8 v2bmcStateDecision(V2MsgHeader *header,   // PTP header info
   }
 }
 
-// Best Master Clock (bmc) function:
-
+/** 
+ * Main function to handle the PTP version 2
+ * Best Master Clock algorithm processing
+ *
+ *@par
+ * This function scans all the foreign master records and
+ * based on current main data for the PTP code,
+ * current run time options and current data in 
+ * the foreign master records determines if 
+ * the PTP state machine should stay the same
+ * or change state based on the data and the algorithm
+ * as specified in IEEE 1588 version 2.
+ *
+ * @see m1
+ * @see v2bmcDataSetComparison
+ * @see v2bmcStateDecision
+ * @return 
+ * Returns Current state if no change needed, otherwise
+ * returns recommended state to go into next
+ * based on running the best clock algorithm
+ */
 UInteger8 v2bmc(ForeignMasterRecord *foreign, 
                 RunTimeOpts         *rtOpts,
                 PtpClock            *ptpClock

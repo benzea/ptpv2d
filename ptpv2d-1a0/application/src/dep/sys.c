@@ -34,6 +34,32 @@
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
 
+/*
+ * @file sys.c
+ *
+ * Misc. system dependent functions, mainly time related and also contains
+ * function to display statistics in printable format or for output 
+ * in .csv format for export to spreadsheet programs
+ *
+ * @par Original Copyright
+ * This file is a derivative work from sys.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (sys.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
 #include "../ptpd.h"
 #ifdef CONFIG_MPC831X
 #include "../mpc831x.h"
@@ -44,6 +70,7 @@
 #include "getopt.h"
 #endif
 
+/** Function to display ptpv2d statistics */
 void displayStats(RunTimeOpts *rtOpts, PtpClock *ptpClock)
 {
   static int  start = 1;
@@ -178,6 +205,12 @@ void displayStats(RunTimeOpts *rtOpts, PtpClock *ptpClock)
 #endif
 }
 
+/** 
+ * Function to sleep for a user specified nubmer of nanoseconds 
+ * This function converts to local system time capabilities
+ * as necessary (example, convert nanoseconds to microseconds,
+ * milliseconds, etc. depending on system timer resolution
+ */
 Boolean nanoSleep(TimeInternal *t)
 {
 #ifdef __WINDOWS__
@@ -209,7 +242,18 @@ Boolean nanoSleep(TimeInternal *t)
   return TRUE;
 }
 
-
+/** 
+ * Function to take the time from the system and use it to set the
+ * PTP current time.
+ *
+ * @note This function is currently only used in systems with 
+ * hardware timestamping and is used to set the hardware
+ * timestamping clock based on the current system time (linux, windows, etc.)
+ * as a base time to start with.
+ *
+ * @param[in]  utc_offset Integer16 value of number of UTC 
+ *             leap seconds since January 1, 1970
+ */
 void setPtpTimeFromSystem(Integer16 utc_offset)
 {
 
@@ -234,6 +278,13 @@ void setPtpTimeFromSystem(Integer16 utc_offset)
 #endif
 }
 
+/** 
+ * Function to take the time from PTP and use it to set the
+ * system's time of day clock.
+ *
+ * @param[in]  utc_offset Integer16 value of number of UTC 
+ *             leap seconds since January 1, 1970
+ */
 void setSystemTimeFromPtp(Integer16 utc_offset)
 {
 #ifdef CONFIG_MPC831X
@@ -257,7 +308,15 @@ void setSystemTimeFromPtp(Integer16 utc_offset)
 #endif
 }
 
-
+/** 
+ * Function to get time from the system or specific
+ * hardware PTP timer (based on system capabilities
+ * and architecture) and return it as ptpv2d system
+ * internal time format
+ *
+ * @param[out] time       Pointer to TimeInternal structure to write time in seconds and nanoseconds TAI time
+ * @param[in]  utc_offset Integer16 value of number of UTC leap seconds since January 1, 1970
+ */
 void getTime(TimeInternal *time, Integer16 utc_offset)
 {
 #ifdef CONFIG_MPC831X
@@ -329,6 +388,15 @@ void getTime(TimeInternal *time, Integer16 utc_offset)
 /* AKB: 1/31/08, Changed set time to set both the MPC8313 HW clock and also the
  * Linux time of day clock 
  */
+/** 
+ * Function to set time to the system or specific
+ * hardware PTP timer (based on system capabilities
+ * and architecture) base on ptpv2d system
+ * internal time format
+ *
+ * @param[in]  time        Pointer to TimeInternal structure with time in seconds and nanoseconds TAI time
+ * @param[in]  utc_offset Integer16 value of number of UTC leap seconds since January 1, 1970
+ */
 void setTime(TimeInternal *time, Integer16 utc_offset)
 {
 #ifdef CONFIG_MPC831X
@@ -389,6 +457,10 @@ void setTime(TimeInternal *time, Integer16 utc_offset)
   NOTIFY("setTime: resetting clock to TAI %ds %dns\n", time->seconds, time->nanoseconds);
 }
 
+/** 
+ * Function to map generic need for a 16 bit unsigned random integer to
+ * appropriate system random function/library
+ */
 UInteger16 getRand(UInteger32 *seed)
 {
 #ifdef __WINDOWS__

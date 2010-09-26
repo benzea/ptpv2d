@@ -32,6 +32,34 @@
 /*                                                                          */
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
+
+/* AKB: 2010-09-25: Added doxygen style comments */
+
+/**
+ * @file ptpv2d.c
+ * Main entry point for ptpv2d PTP daeamon 
+ *
+ * @par Original Copyright
+ * This file is a derivative work from ptpd.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (ptpv2d.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
+ 
+
 #include "ptpd.h"
 
 RunTimeOpts rtOpts;  /* statically allocated run-time configuration data */
@@ -39,7 +67,13 @@ RunTimeOpts rtOpts;  /* statically allocated run-time configuration data */
 int debugLevel; /* Global variable for enabling various debug printf statments */
 #endif
 
-
+/** 
+ * Main entry point for ptpv2d code.  Called with standard C
+ * int argc and char **argv parameters
+ *
+ * @param argc Number of argurments passed
+ * @param argv Pointer to array of pointers to strings, one argument per string 
+ */
 int main(int argc, char **argv)
 {
   PtpClock *ptpClock;

@@ -1,6 +1,6 @@
 /* ptpd_dep.h */
 /* Exported functions from all PTP modules that are target specific 
- * and system specific includes
+ * system specific includes, and some misc system dependent macros
  */
 /* Copyright (c) 2005-2007 Kendall Correll */
 
@@ -33,7 +33,31 @@
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
 
-
+/** 
+ * @file ptpd_dep.h 
+ *
+ * Exported functions from all PTP modules that are target specific 
+ * system specific includes, and some misc system dependent macros
+ *
+ * @par Original Copyright
+ * This file is a derivative work from ptpd_dep.h
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (ptpd_dep.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
 #ifndef PTPD_DEP_H
 #define PTPD_DEP_H
 
@@ -81,8 +105,13 @@
  */
 #ifdef PTPD_DBGV
 #define PTPD_DBG
+
+/** Macro to print out a "Verbose" debug messasge (i.e. high level detail) */
 #define DBGV(x, ...) if ((debugLevel & 2) == 2 ) fprintf(stderr, "(ptp debugV) " x, ##__VA_ARGS__)
+
+/** Macro to print out a "Message" debug message (i.e. relating to PTP data messages) */
 #define DBGM(x, ...) if ((debugLevel & 4) == 4 ) fprintf(stderr, "(ptp debugM) " x, ##__VA_ARGS__)
+
 #define DBGM_ENABLED
 #define DBGV_ENABLED
 #else
@@ -91,6 +120,7 @@
 #endif
 
 #ifdef PTPD_DBG
+/** Macro to print out a "Normal" debug messasge (i.e. normal and unusual cases) */
 #define DBG(x, ...)  if ((debugLevel & 1)==1)  fprintf(stderr, "(ptp debug)  " x, ##__VA_ARGS__)
 #define DBG_ENABLED
 extern int debugLevel;
@@ -107,8 +137,8 @@ extern int debugLevel;
 #define shift16(x,y)  ( (x) << ((y)<<4) )
 #endif
 
-#define flip16(x) htons(x)
-#define flip32(x) htonl(x)
+#define flip16(x) htons(x) /**< Macro for locally defined htons like function */
+#define flip32(x) htonl(x) /**< Macro for locally defined htonl like function */
 
 /* i don't know any target platforms that do not have htons and htonl,
    but here are generic funtions just in case */
@@ -155,7 +185,6 @@ UInteger16 msgPackManagement         (void*,MsgManagement*,PtpClock*);
 UInteger16 msgPackManagementResponse (void*,MsgHeader*,MsgManagement*,PtpClock*);
 
 /* AKB added V2 functions in msg.c */
-
 UInteger8 msgGetPtpVersion             (void *buf);
 void      msgUnpackV2Header            (void *buf, V2MsgHeader             *header);
 void      msgUnpackV2Sync              (void *buf, V2MsgSync               *sync);
@@ -217,17 +246,16 @@ void msgPackV2PDelayRespFollowUp(void                 *buf,
 
 
 /* net.c */
-/* linux API dependent */
-Boolean netInit(NetPath*,RunTimeOpts*,PtpClock*);
-Boolean netShutdown(NetPath*);
-int     netSelect(TimeInternal*,NetPath*);
-int     netSelectAll(TimeInternal*, PtpClock*);  /* Added for multiple port support */
-ssize_t netRecvEvent(Octet*,TimeInternal*,NetPath*);
-ssize_t netRecvGeneral(Octet*,NetPath*);
-ssize_t netRecvRaw(Octet*,NetPath*);                /* Added for 802.1AS support */
-ssize_t netSendEvent(Octet*,UInteger16,NetPath*,Boolean);   /* Added Pdelay flag */
-ssize_t netSendGeneral(Octet*,UInteger16,NetPath*,Boolean); /* Added Pdelay flag */
-ssize_t netSendRaw(Octet*,UInteger16,NetPath*);     /* Added for 802.1AS support */
+Boolean netInit         (NetPath*,RunTimeOpts*,PtpClock*);
+Boolean netShutdown     (NetPath*);
+int     netSelect       (TimeInternal*,NetPath*);
+int     netSelectAll    (TimeInternal*, PtpClock*);           /* Added for multiple port support */
+ssize_t netRecvEvent    (Octet*,TimeInternal*,NetPath*);
+ssize_t netRecvGeneral  (Octet*,NetPath*);
+ssize_t netRecvRaw      (Octet*,NetPath*);                    /* Added for 802.1AS support */
+ssize_t netSendEvent    (Octet*,UInteger16,NetPath*,Boolean); /* Added Pdelay flag */
+ssize_t netSendGeneral  (Octet*,UInteger16,NetPath*,Boolean); /* Added Pdelay flag */
+ssize_t netSendRaw      (Octet*,UInteger16,NetPath*);         /* Added for 802.1AS support */
 
 /* servo.c */
 void initClock(RunTimeOpts*,PtpClock*);
@@ -254,12 +282,10 @@ void updateOffset(TimeInternal *              send_time,  // Sync message report
 void updateClock(RunTimeOpts*,PtpClock*);
 
 /* startup.c */
-/* unix API dependent */
 PtpClock * ptpdStartup(int,char**,Integer16*,RunTimeOpts*);
 void ptpdShutdown(void);
 
 /* sys.c */
-/* unix API dependent */
 void       displayStats(RunTimeOpts*,PtpClock*);
 Boolean    nanoSleep(TimeInternal*);
 void       getTime(TimeInternal*, Integer16); // AKB: added UTC offset
@@ -270,10 +296,10 @@ void       setPtpTimeFromSystem(Integer16);
 void       setSystemTimeFromPtp(Integer16);
 
 /* timer.c */
-void       initTimer(Integer32,UInteger32);  // AKB: Changed from (void) to add secs and usecs
-void       timerUpdate(IntervalTimer*,int);  // AKB: Added port ID for multiple port support
-void       timerStop(UInteger16,IntervalTimer*);
-void       timerStart(UInteger16,UInteger16,IntervalTimer*);
+void       initTimer   (Integer32,UInteger32);  // AKB: Changed from (void) to add secs and usecs
+void       timerUpdate (IntervalTimer*,int);    // AKB: Added port ID for multiple port support
+void       timerStop   (UInteger16,IntervalTimer*);
+void       timerStart  (UInteger16,UInteger16,IntervalTimer*);
 Boolean    timerExpired(UInteger16,IntervalTimer*,int);// AKB: add port ID for multi port support
 
 /* ledlib.c */

@@ -33,10 +33,36 @@
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
 
+/**
+ * @file timer.c 
+ *
+ * System dependent Functions to handle PTP timers (such as protocol timers)
+ * to map them to system timer functions
+ *
+ * @par Original Copyright
+ * This file is a derivative work from timer.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (timer.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
 
 #include "../ptpd.h"
 
-/* TIMER_INTERVAL is based on number of "TICKS" as set
+/**
+ * TIMER_INTERVAL is based on number of "TICKS" as set
  * by initTimer function where currently 1 Tick
  * maps to the seconds and microseconds value passed
  * when calling initTimer
@@ -49,7 +75,7 @@
 HANDLE TimerQueue;
 #endif
 
-/* Elaspsed time (allocated one integer per PTP port) */
+/** Elaspsed time (allocated one integer per PTP port) */
 int elapsed[MAX_PTP_PORTS];
 
 #ifdef LIMIT_RUNTIME
@@ -106,6 +132,9 @@ void catch_alarm(int sig)
 
 }
 
+/** Function to initialize the global timer for ptpv2d
+ * timer functions
+ */
 void initTimer(Integer32  seconds,
                UInteger32 microseconds
               )
