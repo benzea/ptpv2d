@@ -31,6 +31,30 @@
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
 
+/**
+ * @file constants.h
+ * General data structures, typedefs, etc. definitions for PTP
+ * version 1 and version 2
+ *
+ * @par Original Copyright
+ * This file is a derivative work from constants.h
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (constants.h) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
@@ -49,8 +73,8 @@
 #define DEFAULT_V1_CLOCK_VARIANCE    (-1000)  /* AKB: renamed for V2, changed for HW clock */
 #define DEFAULT_V2_CLOCK_VARIANCE    ( 1000)  /* AKB: added   for V2, changed for HW clock */
 #define DEFAULT_CLOCK_STRATUM        4
-#define DEFAULT_INBOUND_LATENCY      0       /* in nsec */
-#define DEFAULT_OUTBOUND_LATENCY     0       /* in nsec */
+#define DEFAULT_INBOUND_LATENCY      0       /**< Default inbound  latency in nanoseconds */
+#define DEFAULT_OUTBOUND_LATENCY     0       /**< Default outbound latency in nanoseconds */
 #define DEFAULT_NO_RESET_CLOCK       FALSE
 #define DEFAULT_AP                   2       /* Changed for HW clock */
 #define DEFAULT_AI                   10      /* Changed for HW clock */
@@ -158,7 +182,7 @@ enum {
   PTP_SYNC_BURST        // 6
 };
 
-/* PTP Managment Messages: */
+/** PTP Managment Messages: */
 enum {
   PTP_MM_NULL=0,                                // 0
   PTP_MM_OBTAIN_IDENTITY,                       // 1
@@ -194,7 +218,7 @@ enum {
 // Implementation specific: 127-255 
 };
 
-/* enum used by this implementation */
+/** enum used by this implementation */
 enum {
   SYNC_RECEIPT_TIMER=0, 
   SYNC_INTERVAL_TIMER,
@@ -238,8 +262,8 @@ enum {
 #define V2_DELAY_RESP_LENGTH           54
 #define V2_PDELAY_RESP_FOLLOWUP_LENGTH 54
 #define V2_ANNOUNCE_LENGTH             64
-#define V2_SIGNALING_LENGTH            44  /* Base length not including any TLVs */
-#define V2_MANAGEMENT_LENGTH           48  /* Base length not including any TLVs */
+#define V2_SIGNALING_LENGTH            44  /**< NOTE:Base length not including any TLVs */
+#define V2_MANAGEMENT_LENGTH           48  /**< NOTE:Base length not including any TLVs */
 
 
 /* Version 2 control field values */

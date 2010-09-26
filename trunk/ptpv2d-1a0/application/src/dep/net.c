@@ -36,6 +36,53 @@
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
 
+/**
+ * @file net.c
+ *
+ * This file contains functions that initializes connections, sends, and 
+ * receives data to and from the local area network. 
+ *
+ *@par
+ * For non-windows systems, all functions are 
+ * written using standard POSIX IPv4 UDP sockets for IEEE 1588 and 
+ * POSIX raw sockets for IEEE 802.1AS.  This in most cases
+ * should make it easily portable to most POSIX compliant systems. 
+ *
+ *@par
+ * For Windows systems, all functions use standard Winsock
+ * calls when Windows does not support a particular POSIX
+ * or linux style function.
+ *
+ *@note 
+ * This is still a work in progress for Windows/Winsock
+ * implementation, so contributions and help in this
+ * area would be appreciated.
+ *
+ *@par
+ * For non-Windows and non-POSIX compliant systems, this module should be
+ * relatively straightforward to be recoded to support other operating 
+ * systems without having to change the other modules in that all network 
+ * calls are abstracted from the main protocol.c module. 
+ *
+ * @par Original Copyright
+ * This file is a derivative work from net.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (net.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
 #include "../ptpd.h"
 #ifdef CONFIG_MPC831X
 #include "../mpc831x.h"
@@ -45,9 +92,13 @@
 
 /* AKB added windows version of sendmsg and recvmsg */
 
-ssize_t recvmsg(SOCKET          sd,     /* Socket descriptor */
-                struct msghdr * msg,    /* Message structure */
-                int             flags   /* Socket flags      */
+/** Portation of linux style recvmsg for Windows 
+ * Winsock environment which does not have this function
+ * in its standard library
+ */
+ssize_t recvmsg(SOCKET          sd,     /**< Socket descriptor */
+                struct msghdr * msg,    /**< Message structure */
+                int             flags   /**< Socket flags      */
                )
 {
     ssize_t bytes_read;             /* Number of bytes read from socket */
@@ -119,10 +170,13 @@ ssize_t recvmsg(SOCKET          sd,     /* Socket descriptor */
     return bytes_read;
 }
 
-
-ssize_t sendmsg(SOCKET          sd,     /* Socket descriptor */
-                struct msghdr * msg,    /* Message structure */
-                int             flags   /* Socket flags      */
+/** Portation of linux style snedmsg for Windows 
+ * Winsock environment which does not have this function
+ * in its standard library
+ */
+ssize_t sendmsg(SOCKET          sd,     /**< Socket descriptor */
+                struct msghdr * msg,    /**< Message structure */
+                int             flags   /**< Socket flags      */
                )
 {
     ssize_t bytes_sent;             /* Number of bytes sent from socket */
@@ -200,6 +254,13 @@ ssize_t sendmsg(SOCKET          sd,     /* Socket descriptor */
 
 #endif /* #ifdef __WINDOWS__ added sendmsg and recvmsg */
 
+/** 
+ * Function to lookup a PTP subdomain address
+ *
+ * @param[in] subdomainName    Octet pointer to subdomain name 
+ * @param[in] subdomainAddress Octet pointer to subdomain address
+ * @return Returns FALSE if not found, TRUE if found
+ */
 Boolean lookupSubdomainAddress(Octet *subdomainName, Octet *subdomainAddress)
 {
   UInteger32 h;
@@ -555,12 +616,16 @@ int  WindowsFindAdapterData(
 
 #endif
 
-/* Find interface, returns unsigned 32 bit IPv4 address of interface */
+/** Function to find a suitable interface for PTP protocol
+ * @return 
+ * Returns unsigned 32 bit IPv4 address of interface if sucessful,
+ * otherwise it returns zero
+ */
 UInteger32 findIface(  
-                     Octet *     ifaceName,               /* Name (e.g. eth0 or NULL ptr) */
-                     UInteger8 * communicationTechnology, /* Communication technology */
-                     Octet *     uuid,                    /* UUID (to copy MAC address to */
-                     NetPath *   netPath                  /* NetPath (network info structure) */
+                     Octet *     ifaceName,               /**< Name (e.g. eth0 or NULL ptr) */
+                     UInteger8 * communicationTechnology, /**< Communication technology */
+                     Octet *     uuid,                    /**< UUID (to copy MAC address to */
+                     NetPath *   netPath                  /**< NetPath (network info structure) */
                     )
 {
 #if defined(linux)
@@ -1132,17 +1197,21 @@ UInteger32 findIface(
 
 }
 
-/* start all of the Netwok UDP and Layer 2 raw stuff */
-/* must specify 'subdomainName', optionally 'ifaceName', if not then pass ifaceName == "" */
-/* returns other args */
+/**
+* Function to start all of the Netwok UDP and Layer 2 raw stuff 
+* Prior to calling you must specify 'subdomainName', optionally 'ifaceName', 
+* if not then pass ifaceName == ""
+*
+* @return Returns TRUE if all initialization for the network
+* functions succeeded, otherwise returns FALSE
+*/
 /* on socket options, see the 'socket(7)' and 'ip' man pages */
-
 Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
 {
   int    temp, i;
   struct in_addr interfaceAddr, netAddr;
-  struct sockaddr_in addr;    /* Internet Socket data */
-  struct sockaddr_ll rawaddr; /* Link Layer raw socket data */
+  struct sockaddr_in addr;    /**< Internet Socket data */
+  struct sockaddr_ll rawaddr; /**< Link Layer raw socket data */
   struct ip_mreq imr;
   char   addrStr[NET_ADDRESS_LENGTH];
   char   interface_name[IFACE_NAME_LENGTH];
@@ -1634,8 +1703,7 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
   return TRUE;
 }
 
-/* shut down the UDP and raw socket stuff */
-
+/** Function to shut down the UDP and raw socket stuff */
 Boolean netShutdown(NetPath *netPath)
 {
   struct ip_mreq imr;
@@ -1748,13 +1816,14 @@ Boolean netShutdown(NetPath *netPath)
   return TRUE;
 }
 
-/*
- * netSelect:
+/**
+ * @fn netSelect
  *
  * Function to check multiple sockets on a single port if anything is ready to receive
  * with an optional time to wait for event 
+ *
+ *@note This is still a work in progress for supporting Windows/winsock
  */
-
 int netSelect(TimeInternal *timeout, NetPath *netPath)
 {
   int    ret;
@@ -1874,8 +1943,8 @@ int netSelect(TimeInternal *timeout, NetPath *netPath)
   return ret;
 }
 
-/*
- * netSelectAll:
+/**
+ * @fn netSelectAll
  *
  * Function to check multiple sockets on all ports if anything is ready to receive
  * with an optional time to wait for event 
@@ -1998,7 +2067,14 @@ int netSelectAll(TimeInternal *timeout, PtpClock *ptpClock)
 }
 
 #ifdef __WINDOWS__
-
+/** 
+ * Windows specific function to check if there is anything
+ * to process at a given socket.  This way, in Windows
+ * we first check if anything is at a socket before
+ * processing a receive message.  That way we don't
+ * accidentally wait for a socket that doesn't yet
+ * have any data for us
+ */
 int netRecvSocketCheck(SOCKET sd)
 {
   SOCKET nfds;
@@ -2029,6 +2105,7 @@ int netRecvSocketCheck(SOCKET sd)
 }
 #endif
 
+/** Function to receive a PTP event messsage */
 ssize_t netRecvEvent(Octet *buf, 
                      TimeInternal *time,
                      NetPath *netPath
@@ -2244,7 +2321,7 @@ ssize_t netRecvEvent(Octet *buf,
 
   return ret;
 }
-
+/** Function to receive a PTP General message */
 ssize_t netRecvGeneral(Octet *buf, NetPath *netPath)
 {
   ssize_t ret;
@@ -2335,6 +2412,10 @@ ssize_t netRecvGeneral(Octet *buf, NetPath *netPath)
   return ret;
 }
 
+/**
+ * Function to receive a PTP direct ethernet encapsulation
+ * from a raw socket 
+ */
 ssize_t netRecvRaw(Octet *buf, NetPath *netPath)
 {
   ssize_t ret;
@@ -2429,7 +2510,7 @@ ssize_t netRecvRaw(Octet *buf, NetPath *netPath)
   return ret;
 }
 
-
+/** Function to send a PTP Event message to the network */
 ssize_t netSendEvent(Octet *buf, UInteger16 length, NetPath *netPath, Boolean pdelay)
 {
   ssize_t ret;
@@ -2514,6 +2595,7 @@ ssize_t netSendEvent(Octet *buf, UInteger16 length, NetPath *netPath, Boolean pd
   return ret;
 }
 
+/** Function to send a PTP General message to the network */
 ssize_t netSendGeneral(Octet *buf, UInteger16 length, NetPath *netPath, Boolean pdelay)
 {
   ssize_t ret;
@@ -2599,6 +2681,10 @@ ssize_t netSendGeneral(Octet *buf, UInteger16 length, NetPath *netPath, Boolean 
   return ret;
 }
 
+/** 
+ * Functon to send a PTP direct ethernet encapsulation message
+ * to a raw socket
+ */
 ssize_t netSendRaw(Octet *buf, UInteger16 length, NetPath *netPath)
 {
   ssize_t ret;

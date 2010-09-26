@@ -1,13 +1,33 @@
 /**
  * @file src/dep/startup.c 
+ *
+ * System dependent Startup, initialization and shutdown functions for 
+ * PTP daemon 
+ *
+ * @par Original Copyright
+ * This file is a derivative work from startup.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (startup.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ *
  * @author Kendall Correl (original)
  * @author Alan K. Bartky (enhancements, HW timestamping, comments, version 2 support)
- * @license GPL Version 2
  */
 
-/* System dependent Startup, initialization and shutdown functions for 
- * PTP daemon 
- */
+
 /* Copyright (c) 2005-2007 Kendall Correll (original work, version rc1) */
 
 /****************************************************************************/
@@ -118,7 +138,11 @@ void ptpdShutdown()
 #endif
 }
 
-
+/** Function to pass command line arguments passed
+ * to ptp2d at startup time, make sure all options
+ * are valid and if so, setup system ptpv2d run
+ * time options as appropriate
+ */
 int parseCommandLineArguments (int           argc,
                                char **       argv,
                                Integer16 *   ret,
@@ -488,6 +512,7 @@ int allocatePtpdMemory (Integer16 *ret, RunTimeOpts *rtOpts)
   
 }
 
+/** Main function to startup the ptpv2d software */
 PtpClock * ptpdStartup(int argc, char **argv, Integer16 *ret, RunTimeOpts *rtOpts)
 {
     int i;

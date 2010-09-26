@@ -30,6 +30,48 @@
 /*                                                                          */
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
+/* AKB 2010-09-25: Added doxygen style comments */
+
+/**
+ * @file protocol.c
+ *
+ * This module contains main protocol state machines as defined in 
+ * IEEE 1588 version 1, IEEE 1588 version 2 and IEEE 802.1AS specifications. 
+ * The state machine is implemented as a forever loop with cases for each state 
+ * and variations in the state machines handled by run time option variables 
+ * and also alternate functions being called depending on whether the version 
+ * of PTP running. It is called with the protocol() function after start-up 
+ * and normal execution runs as a forever loop waiting on message reception or 
+ * timeouts to occur to process the associated message or timeout. The primary 
+ * states are handled by the function doState() and state transitions are handled 
+ * by toState(). These transitions occur primarily due to the results of timeout 
+ * or message events in association with the Best Master Clock (BMC) algorithm. 
+ * Message events are processed by the handle() function and actions are taken based 
+ * on PTP state, parsed message data and other run time and dynamic variables. 
+ * The primary actions are message sends, timer resets, regular runs of the BMC 
+ * algorithm, foreign master data updates, and system clock servo updates after 
+ * PTP sync and follow-up message receipts. 
+ *
+ * @par Original Copyright
+ * This file is a derivative work from protocol.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (protocol.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
+
 #include "ptpd.h"
 #ifdef CONFIG_MPC831X
 #include "mpc831x.h"
@@ -38,10 +80,10 @@
 // Local function prototypes:
 
 Boolean doInit(RunTimeOpts*,PtpClock*);
-void doState(RunTimeOpts*,PtpClock*);
-void toState(UInteger8,RunTimeOpts*,PtpClock*);
+void doState  (RunTimeOpts*,PtpClock*);
+void toState  (UInteger8,RunTimeOpts*,PtpClock*);
 
-void handle(RunTimeOpts*,PtpClock*);
+void handle   (RunTimeOpts*,PtpClock*);
 
 void handleSync(MsgHeader*,    // Pointer to V1 unpacked message header
                 V2MsgHeader*,  // Pointer to V2 unpakced message header
@@ -126,22 +168,22 @@ void handlePDelayRespFollowUp(V2MsgHeader  *v2_header,
                               PtpClock     *ptpClock
                              );
 
-void handleSyncTxComplete(TimeInternal*,RunTimeOpts*,PtpClock*);
-void handleDelayReqTxComplete(TimeInternal*,RunTimeOpts*,PtpClock*);
-void handlePDelayRespTxComplete(TimeInternal*,RunTimeOpts*,PtpClock*);
+void handleSyncTxComplete       (TimeInternal*,RunTimeOpts*,PtpClock*);
+void handleDelayReqTxComplete   (TimeInternal*,RunTimeOpts*,PtpClock*);
+void handlePDelayRespTxComplete (TimeInternal*,RunTimeOpts*,PtpClock*);
 
 
-void issueSync(RunTimeOpts*,PtpClock*);
-void issueFollowup(TimeInternal*,RunTimeOpts*,PtpClock*);
-void issueDelayReq(RunTimeOpts*,PtpClock*);
-void issueDelayResp(TimeInternal*,MsgHeader*,V2MsgHeader*,RunTimeOpts*,PtpClock*);
+void issueSync      (RunTimeOpts*,PtpClock*);
+void issueFollowup  (TimeInternal*,RunTimeOpts*,PtpClock*);
+void issueDelayReq  (RunTimeOpts*,PtpClock*);
+void issueDelayResp (TimeInternal*,MsgHeader*,V2MsgHeader*,RunTimeOpts*,PtpClock*);
 void issueManagement(MsgHeader*,MsgManagement*,RunTimeOpts*,PtpClock*);
 
-void issueAnnounce(RunTimeOpts *rtOpts,                    // AKB: added for v2
+// AKB: issue message functions added for v2:
+void issueAnnounce(RunTimeOpts *rtOpts,  
                    PtpClock    *ptpClock
                   );
-
-void issuePDelayResp(TimeInternal*,V2MsgHeader*,RunTimeOpts*,PtpClock*);
+void issuePDelayResp        (TimeInternal*,V2MsgHeader*,RunTimeOpts*,PtpClock*);
 void issuePDelayRespFollowup(TimeInternal*,RunTimeOpts*,PtpClock*);
 
 MsgSync *     addForeign(  Octet*,MsgHeader*,  PtpClock*);
@@ -150,9 +192,12 @@ MsgAnnounce * addV2Foreign(Octet*,V2MsgHeader*,PtpClock*);  // AKB: added for v2
 #ifdef CONFIG_MPC831X
 void checkTxCompletions(RunTimeOpts*,PtpClock*);
 #endif
-
-void multiPortProtocol(RunTimeOpts *rtOpts,  // Global Run Time Options
-                       PtpClock    *ptpClock // Pointer to array of ptpClock structures
+/** 
+ * Main function for handling protocol when running with multiple ports.
+ * NOTE: Support of multiple ports is still a work in progress.
+ */
+void multiPortProtocol(RunTimeOpts *rtOpts,  /**< Global Run Time Options */
+                       PtpClock    *ptpClock /**< Pointer to array of ptpClock structures */
                       )
 {
   int           i;
@@ -250,14 +295,16 @@ void multiPortProtocol(RunTimeOpts *rtOpts,  // Global Run Time Options
 }
 
 
-/* loop forever. doState() has a switch for the actions and events to be
+/**
+ * Main function to handle PTP protocol for both version
+ * 1 and version 2.  This functions loops forever. 
+ * doState() has a switch for the actions and events to be
  * checked for 'port_state'. the actions and events may or may not change
  * 'port_state' by calling toState(), but once they are done we loop around
  * again and perform the actions required for the new 'port_state'.
  */
-
-void protocol(RunTimeOpts * rtOpts, 
-              PtpClock *    ptpClock
+void protocol(RunTimeOpts *rtOpts,  /**< Global Run Time Options */
+              PtpClock    *ptpClock /**< Pointer to array of ptpClock structures */
              )
 {
   int ret;
@@ -335,9 +382,14 @@ void protocol(RunTimeOpts * rtOpts,
   }
 }
 
-Boolean doInit(                       // doInit function
-               RunTimeOpts * rtOpts,  // Pointer to run time options
-               PtpClock *    ptpClock // Pointer to PTP clock structure
+/** 
+ * Function to do initialization of PTP software 
+ *
+ *@return Returns TRUE if OK, otherwise returns FALSE for error
+ */
+Boolean doInit(                       
+               RunTimeOpts * rtOpts,  /**< Pointer to run time options */
+               PtpClock *    ptpClock /**< Pointer to PTP clock structure */
               )
 {
   unsigned int microseconds;
@@ -487,10 +539,11 @@ Boolean doInit(                       // doInit function
   return TRUE;
 }
 
-/* handle actions and events for 'port_state' */
-
-void doState(RunTimeOpts *rtOpts, 
-             PtpClock    *ptpClock
+/**
+ * Main function to handle actions and events for 'port_state' 
+ */
+void doState(RunTimeOpts *rtOpts,  /**< Global Run Time Options */
+             PtpClock    *ptpClock /**< Pointer to array of ptpClock structures */
             )
 {
   UInteger8 state;
@@ -659,11 +712,13 @@ void doState(RunTimeOpts *rtOpts,
   }
 }
 
-/* perform actions required when leaving 'port_state' and entering 'state' */
-
-void toState(UInteger8     state, 
-             RunTimeOpts * rtOpts,
-             PtpClock *    ptpClock
+/**
+ * Function to process state machine when it is needed
+ * to perform actions required when leaving 'port_state' and entering 'state' 
+ */
+void toState(UInteger8     state,   /**< State to transition to */ 
+             RunTimeOpts * rtOpts,  /**< Pointer to run time options */
+             PtpClock *    ptpClock /**< Pointer to PTP clock structure */
             )
 {
   ptpClock->message_activity = TRUE;
@@ -893,9 +948,12 @@ void toState(UInteger8     state,
   }
 }
 
-/* check for and handle received messages */
-void handle(RunTimeOpts * rtOpts,
-            PtpClock *    ptpClock
+/** 
+ * Main function to check for and handle received PTP version 1
+ * and version 2 messages 
+ */
+void handle(RunTimeOpts * rtOpts,  /**< Pointer to run time options */
+            PtpClock *    ptpClock /**< Pointer to PTP clock structure */
            )
 {
   int            ret;
@@ -1467,9 +1525,14 @@ TimeInternal debug_delta_time = {0,0};
 }
 
 #ifdef CONFIG_MPC831X
-void checkTxCompletions(RunTimeOpts *rtOpts,
-                        PtpClock    *ptpClock
-                       )
+/** 
+ * Function to check for transmit completions of frames that 
+ * are timestamped.  This is used for the case of hardware
+ * drivers that are polled for transmit completion.
+ */
+void checkTxCompletions(RunTimeOpts * rtOpts,  /**< Pointer to run time options */
+                        PtpClock *    ptpClock /**< Pointer to PTP clock structure */
+                        )
 {
 TimeInternal time;
 UInteger8    message_type;
@@ -1653,18 +1716,22 @@ Boolean      state_ok;
 }
 #endif
 
+/**
+ * Function to handle the case where a PTP version 1 or version 2
+ * Sync message has completed transmission.  This occurs when
+ * an inbound Sync message is from us (echoed back from the socket)
+ * or detected as a transmit complete by polling the driver
+ * (depending on the transmit time implementation option of the software)
+ * We check if we are clock follow up message capable and if
+ * so, add any outbound latency to the reported Sync message
+ * transmission time, then build and send a follow up message.
+ */
 void handleSyncTxComplete( 
-                          TimeInternal *time,
-                          RunTimeOpts  *rtOpts,
-                          PtpClock     *ptpClock
+                          TimeInternal *time,    /**< Time when sync message was sent */
+                          RunTimeOpts * rtOpts,  /**< Pointer to run time options */
+                          PtpClock *    ptpClock /**< Pointer to PTP clock structure */
                          )
 {
-  /* Inbound Sync message is from us (echoed back from the socket
-   * or detected as a transmit complete by polling the driver).
-   * Check if we are clock follow up message capable and if
-   * so, add any outbound latency to the reported Sync message
-   * transmission time, then build and send a follow up message.
-   */
   ptpClock->sentSync                             = FALSE;
 #ifdef CONFIG_MPC831X
   ptpClock->tx_sync_time_pending                 = FALSE;
@@ -1679,15 +1746,15 @@ void handleSyncTxComplete(
 
 void handlePDelayRespTxComplete( 
                                 TimeInternal *time,
-                                RunTimeOpts  *rtOpts,
-                                PtpClock     *ptpClock
+                                RunTimeOpts * rtOpts,  /**< Pointer to run time options */
+                                PtpClock *    ptpClock /**< Pointer to PTP clock structure */
                                )
 {
-  /* Inbound Sync message is from us (echoed back from the socket
+  /* Inbound PDelay response message is from us (echoed back from the socket
    * or detected as a transmit complete by polling the driver).
    * Check if we are clock follow up message capable and if
-   * so, add any outbound latency to the reported Sync message
-   * transmission time, then build and send a follow up message.
+   * so, add any outbound latency to the reported PDelay response message
+   * transmission time, then build and send a PDelay response follow up message.
    */
   ptpClock->sentPDelayResp              = FALSE;
 #ifdef CONFIG_MPC831X
@@ -1701,14 +1768,14 @@ void handlePDelayRespTxComplete(
   }
 }
 
-
-void handleAnnounce(V2MsgHeader  *header, 
-                    Octet        *msgIbuf,
-                    ssize_t       length,
-                    TimeInternal *time,
-                    Boolean       isFromSelf,
-                    RunTimeOpts  *rtOpts,
-                    PtpClock     *ptpClock
+/* Function to handle a PTP version 2 Announce message */
+void handleAnnounce(V2MsgHeader  *header,    /**< Pointer to PTP version 2 message header */
+                    Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+                    ssize_t       length,    /**< PTP message length */
+                    TimeInternal *time,      /**< Time PTP message was received */
+                    Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+                    RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+                    PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
                    )
 {
   MsgAnnounce *announce;  /* V2 announce  message */
@@ -1857,15 +1924,18 @@ void handleAnnounce(V2MsgHeader  *header,
 }
 
 short temp_debug_issue_delay_counter=0;
-
-void handleSync(MsgHeader    *header,
-                V2MsgHeader  *v2_header, 
-                Octet        *msgIbuf,
-                ssize_t       length,
-                TimeInternal *time,
-                Boolean       isFromSelf,
-                RunTimeOpts  *rtOpts,
-                PtpClock     *ptpClock
+/** 
+ * Function to handle a PTP version 1 or version 2
+ * Sync message 
+ */
+void handleSync(MsgHeader    *header,    /**< Pointer to PTP version 1 message header */
+                V2MsgHeader  *v2_header, /**< Pointer to PTP version 2 message header */
+                Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+                ssize_t       length,    /**< PTP message length */
+                TimeInternal *time,      /**< Time PTP message was received */
+                Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+                RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+                PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
                )
 {
   MsgSync      *sync;
@@ -2209,14 +2279,15 @@ void handleSync(MsgHeader    *header,
     break;
   }
 }
-
-void handleFollowUp(MsgHeader   *header,
-                    V2MsgHeader *v2_header,
-                    Octet       *msgIbuf,
-                    ssize_t      length,
-                    Boolean      isFromSelf,
-                    RunTimeOpts *rtOpts,
-                    PtpClock    *ptpClock
+/** Function to handle PTP version 1 or version 2 Follow Up message */
+void handleFollowUp(MsgHeader    *header,    /**< Pointer to PTP version 1 message header */
+                    V2MsgHeader  *v2_header, /**< Pointer to PTP version 2 message header */
+                    Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+                    ssize_t       length,    /**< PTP message length */
+                    TimeInternal *time,      /**< Time PTP message was received */
+                    Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+                    RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+                    PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
                    )
 {
   MsgFollowUp   *follow;
@@ -2400,10 +2471,13 @@ void handleFollowUp(MsgHeader   *header,
     return;
   }
 }
-
-void handleDelayReqTxComplete(TimeInternal *time,
-                              RunTimeOpts  *rtOpts,
-                              PtpClock     *ptpClock
+/** 
+ * Function to handle processing of a PTP version 1 or version 2
+ * Delay Request message transmit completion
+ */
+void handleDelayReqTxComplete(TimeInternal * time,    /**< Time Delay request or PDelay request sent */
+                              RunTimeOpts *  rtOpts,  /**< Pointer to run time options */
+                              PtpClock *     ptpClock /**< Pointer to PTP clock structure */
                              )
 {
    DBGV("handleDelayReqTxComplete:\n");
@@ -2489,16 +2563,17 @@ void handleDelayReqTxComplete(TimeInternal *time,
     }
   }
 }
-
-void handleDelayReq(MsgHeader    *header,
-                    V2MsgHeader  *v2_header,
-                    Octet        *msgIbuf,
-                    ssize_t       length,
-                    TimeInternal *time,
-                    Boolean       isFromSelf,
-                    RunTimeOpts  *rtOpts,
-                    PtpClock     *ptpClock
-                   )
+/** Function to handle PTP version 1 and version 2 Delay Request message */
+void handleDelayReq(
+    MsgHeader    *header,    /**< Pointer to PTP version 1 message header */
+    V2MsgHeader  *v2_header, /**< Pointer to PTP version 2 message header */
+    Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+    ssize_t       length,    /**< PTP message length */
+    TimeInternal *time,      /**< Time PTP message was received */
+    Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+    RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+    PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
+    )
 {
   DBGV("handleDelayReq: message length: %d\n",length);
   if(   ((ptpClock->current_msg_version == 1) && (length < DELAY_REQ_PACKET_LENGTH))
@@ -2567,15 +2642,17 @@ void handleDelayReq(MsgHeader    *header,
     return;
   }
 }
-
-void handleDelayResp(MsgHeader   *header, 
-                     V2MsgHeader *v2_header,
-                     Octet       *msgIbuf, 
-                     ssize_t      length,
-                     Boolean      isFromSelf,
-                     RunTimeOpts *rtOpts,
-                     PtpClock    *ptpClock
-                    )
+/** Function to handle PTP version 1 and version 2 delay response message */
+void handleDelayResp(
+    MsgHeader    *header,    /**< Pointer to PTP version 1 message header */
+    V2MsgHeader  *v2_header, /**< Pointer to PTP version 2 message header */
+    Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+    ssize_t       length,    /**< PTP message length */
+    TimeInternal *time,      /**< Time PTP message was received */
+    Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+    RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+    PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
+   )
 {
   MsgDelayResp   *resp;
   V2MsgDelayResp *v2resp;
@@ -2688,15 +2765,17 @@ void handleDelayResp(MsgHeader   *header,
   }
 }
 
+/** Function to handle PTP version 2 PDelay Request message */
+void handlePDelayReq(
+    V2MsgHeader  *v2_header, /**< Pointer to PTP version 2 message header */
+    Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+    ssize_t       length,    /**< PTP message length */
+    TimeInternal *time,      /**< Time PTP message was received */
+    Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+    RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+    PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
+    )
 
-void handlePDelayReq(V2MsgHeader  *v2_header,
-                     Octet        *msgIbuf,
-                     ssize_t       length,
-                     TimeInternal *time,
-                     Boolean       isFromSelf,
-                     RunTimeOpts  *rtOpts,
-                     PtpClock     *ptpClock
-                    )
 {
   DBGV("handlePDelayReq: message length: %d\n",length);
   if(length < V2_PDELAY_REQ_LENGTH)
@@ -2774,15 +2853,16 @@ void handlePDelayReq(V2MsgHeader  *v2_header,
   }
 }
 
-
-void handlePDelayResp(V2MsgHeader  *v2_header,
-                      Octet        *msgIbuf,
-                      ssize_t       length,
-                      TimeInternal *time,
-                      Boolean       isFromSelf,
-                      RunTimeOpts  *rtOpts,
-                      PtpClock     *ptpClock
-                     )
+/** Function to handle a PTP version 2 PDelay Response message */
+void handlePDelayResp(    
+    V2MsgHeader  *v2_header, /**< Pointer to PTP version 2 message header */
+    Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+    ssize_t       length,    /**< PTP message length */
+    TimeInternal *time,      /**< Time PTP message was received */
+    Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+    RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+    PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
+    )
 {
   Boolean              port_id_ok;
   Boolean              current_sequence;
@@ -2945,14 +3025,16 @@ void handlePDelayResp(V2MsgHeader  *v2_header,
     DBGV("handlePdelayResp: Not in a valid state to process message\n");
   }
 }
-
-void handlePDelayRespFollowUp(V2MsgHeader  *v2_header,
-                              Octet        *msgIbuf,
-                              ssize_t       length,
-                              Boolean       isFromSelf,
-                              RunTimeOpts  *rtOpts,
-                              PtpClock     *ptpClock
-                             )
+/** Function to handle PTP version 2 PDelay Response follow up */
+void handlePDelayRespFollowUp(    
+    V2MsgHeader  *v2_header, /**< Pointer to PTP version 2 message header */
+    Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+    ssize_t       length,    /**< PTP message length */
+    TimeInternal *time,      /**< Time PTP message was received */
+    Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+    RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+    PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
+    )
 {
   Boolean                  port_id_ok;
   Boolean                  current_sequence;
@@ -3077,14 +3159,16 @@ void handlePDelayRespFollowUp(V2MsgHeader  *v2_header,
   }
 }
 
+/** Function to handle PTP version 1 management packet */
+void handleManagement(
+    MsgHeader    *header,    /**< Pointer to PTP version 1 message header */
+    Octet        *msgIbuf,   /**< Pointer to PTP raw message data */
+    ssize_t       length,    /**< PTP message length */
+    Boolean       isFromSelf,/**< Boolean flag if message was from self (socket loopback) */
+    RunTimeOpts * rtOpts,    /**< Pointer to run time options */
+    PtpClock *    ptpClock   /**< Pointer to PTP clock structure */
+    )
 
-void handleManagement(MsgHeader *   header, 
-                      Octet *       msgIbuf,
-                      ssize_t       length,
-                      Boolean       isFromSelf,
-                      RunTimeOpts * rtOpts,
-                      PtpClock *    ptpClock
-                     )
 {
   MsgManagement *manage;
   
@@ -3129,6 +3213,8 @@ void handleManagement(MsgHeader *   header,
 }
 
 /* Functions to pack and send various messages */
+
+/** Function to build, pack and send PTP Version 2 Announce message */
 void issueAnnounce(RunTimeOpts * rtOpts, 
                    PtpClock *    ptpClock
                   )
@@ -3193,7 +3279,10 @@ void issueAnnounce(RunTimeOpts * rtOpts,
     DBGV("issueAnnounce: sent announce message\n");
   }
 }
-
+/** 
+ * Function to build, pack and send PTP version 1 or version 2 
+ * Sync message 
+ */
 void issueSync(RunTimeOpts * rtOpts, 
                PtpClock *    ptpClock
                )
@@ -3279,6 +3368,10 @@ void issueSync(RunTimeOpts * rtOpts,
   }
 }
 
+/** 
+ * Function to build, pack and send PTP version 1 or version 2 
+ * Follow Up message 
+ */
 void issueFollowup(TimeInternal *time,    // Transmit Time from last sent Sync message
                    RunTimeOpts  *rtOpts,
                    PtpClock     *ptpClock
@@ -3357,6 +3450,10 @@ void issueFollowup(TimeInternal *time,    // Transmit Time from last sent Sync m
   }
 }
 
+/** 
+ * Function to build, pack and send PTP version 1 or version 2 
+ * Delay request message 
+ */
 void issueDelayReq(RunTimeOpts *rtOpts, 
                    PtpClock    *ptpClock
                   )
@@ -3454,9 +3551,13 @@ void issueDelayReq(RunTimeOpts *rtOpts,
   }
 }
 
+/** 
+ * Function to build, pack and send PTP version 1 or version 2 
+ * Delay Response message 
+ */
 void issueDelayResp(TimeInternal *time, 
                     MsgHeader    *header,
-                    V2MsgHeader  *v2header,
+                    V2MsgHeader  *v2_header,
                     RunTimeOpts  *rtOpts,
                     PtpClock     *ptpClock
                    )
@@ -3487,7 +3588,7 @@ int ret;
                       );
     msgPackV2DelayResp( ptpClock->msgObuf,       // buf, 
                         FALSE,                   // unicast,
-                        v2header,                // header,
+                        v2_header,               // header,
                        &v2DelayReceiptTimestamp, // delayReceiptTimestamp,
                         ptpClock                 // ptpClock
                        );
@@ -3523,8 +3624,12 @@ int ret;
   }
 }
 
+/** 
+ * Function to build, pack and send PTP version 2 
+ * PDelay Response message 
+ */
 void issuePDelayResp(TimeInternal *time, 
-                     V2MsgHeader  *v2header,
+                     V2MsgHeader  *v2_header,
                      RunTimeOpts  *rtOpts,
                      PtpClock     *ptpClock
                     )
@@ -3539,7 +3644,7 @@ void issuePDelayResp(TimeInternal *time,
   ptpClock->tx_pdelay_resp_time_pending = TRUE;
 #endif
 
-  ptpClock->last_pdelay_resp_tx_sequence_number = v2header->sequenceId;
+  ptpClock->last_pdelay_resp_tx_sequence_number = v2_header->sequenceId;
 
   v2FromInternalTime(  time,
                       &v2PDelayReceiptTimestamp,
@@ -3548,7 +3653,7 @@ void issuePDelayResp(TimeInternal *time,
                     );
   msgPackV2PDelayResp( ptpClock->msgObuf,        // buf, 
                        FALSE,                    // unicast,
-                       v2header,                 // header,
+                       v2_header,                // header,
                       &v2PDelayReceiptTimestamp, // delayReceiptTimestamp,
                        ptpClock                  // ptpClock
                       );
@@ -3587,7 +3692,11 @@ void issuePDelayResp(TimeInternal *time,
   }
 }
 
-void issuePDelayRespFollowup(TimeInternal *time,    // Transmit Time from PDelay Response message
+/** 
+ * Function to build, pack and send PTP version 2 
+ * PDelay Response message 
+ */
+void issuePDelayRespFollowup(TimeInternal *time,    /**< Transmit Time from PDelay Response message */
                              RunTimeOpts  *rtOpts,
                              PtpClock     *ptpClock
                             )
@@ -3646,7 +3755,10 @@ void issuePDelayRespFollowup(TimeInternal *time,    // Transmit Time from PDelay
   }
 }
 
-
+/** 
+ * Function to build, pack and send PTP version 1
+ * Management message 
+ */
 void issueManagement(MsgHeader     *header,
                      MsgManagement *manage,
                      RunTimeOpts   *rtOpts,
@@ -3689,13 +3801,15 @@ void issueManagement(MsgHeader     *header,
   }
 }
 
-/* IEEE V1 add or update an entry in the foreign master data set,
- * return pointer to unpacked SYNC message 
+/**
+ * Function for IEEE PTP Version 2 to add or update an entry in the 
+ * foreign master data set
+ *
+ * @return Returns pointer to unpacked PTP version 2 announce message 
  */
-
-MsgAnnounce * addV2Foreign(Octet       *buf,        // Buffer to raw data 
-                           V2MsgHeader *header,     // Unpacked PTP header
-                           PtpClock    *ptpClock    // Pointer to main PTP data structure
+MsgAnnounce * addV2Foreign(Octet       *buf,        /**< Buffer to raw data */
+                           V2MsgHeader *header,     /**< Unpacked PTP version 2 header */
+                           PtpClock    *ptpClock    /**< Pointer to main PTP data structure */
                           )
 {
   int i, j;
@@ -3800,10 +3914,12 @@ MsgAnnounce * addV2Foreign(Octet       *buf,        // Buffer to raw data
   return &ptpClock->foreign[j].announce;  /* Return pointer to unpacked Announce message */
 }
 
-/* IEEE V1 add or update an entry in the foreign master data set,
- * return pointer to unpacked SYNC message 
+/**
+ * Function for IEEE PTP Version 1 to add or update an entry in the 
+ * foreign master data set
+ *
+ * @return Returns pointer to unpacked PTP version 1 sync message 
  */
-
 MsgSync * addForeign(Octet *buf, MsgHeader *header, PtpClock *ptpClock)
 {
   int i, j;
