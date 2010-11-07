@@ -255,7 +255,7 @@ ssize_t netRecvGeneral  (Octet*,NetPath*);
 ssize_t netRecvRaw      (Octet*,NetPath*);                    /* Added for 802.1AS support */
 ssize_t netSendEvent    (Octet*,UInteger16,NetPath*,Boolean); /* Added Pdelay flag */
 ssize_t netSendGeneral  (Octet*,UInteger16,NetPath*,Boolean); /* Added Pdelay flag */
-ssize_t netSendRaw      (Octet*,UInteger16,NetPath*);         /* Added for 802.1AS support */
+ssize_t netSendRaw      (Octet*,UInteger16,NetPath*,Boolean); /* Added for 802.1AS and 1588 Annex F support */
 
 /* servo.c */
 void initClock(RunTimeOpts*,PtpClock*);
