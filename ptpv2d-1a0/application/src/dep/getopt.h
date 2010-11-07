@@ -1,5 +1,42 @@
-/* getopt.h */
-/* Declarations for getopt.
+/**
+   @file getopt.h
+   GDeclarations for getopt.
+
+   @note
+   NOTE: getopt is now part of the C library, so if you don't know what
+   "Keep this file name-space clean" means, talk to drepper@gnu.org
+   before changing it!
+
+   @par Copyright
+   Copyright (C) 1987,88,89,90,91,92,93,94,95,96,98,99,2000,2001
+        Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   @par License
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   @par
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   @par
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  
+
+   @par doxygen comments
+   doxygen style comments updates and additions
+   courtesy of Alan K. Bartky and may be reused as long as 
+   also used under GPL license terms
+   */
+
+/* 
    Copyright (C) 1989-1994, 1996-1999, 2001 Free Software 
    Foundation, Inc. This file is part of the GNU C Library.
 
@@ -75,27 +112,33 @@ extern int opterr;
 extern int optopt;
 
 #ifndef __need_getopt
-/* Describe the long-named options requested by the application.
+/**
+   Describe the long-named options requested by the application.
    The LONG_OPTIONS argument to getopt_long or getopt_long_only is a vector
    of `struct option' terminated by an element containing a name which is
    zero.
 
+   @par
    The field `has_arg' is:
+   @code
    no_argument          (or 0) if the option does not take an argument,
    required_argument    (or 1) if the option requires an argument,
    optional_argument    (or 2) if the option takes an optional argument.
+   @nocode
 
+   @par
    If the field `flag' is not NULL, it points to a variable that is set
    to the value given in the field `val' when the option is found, but
    left unchanged if the option is not found.
 
+   @par
    To have a long-named option do something other than set an `int' to
    a compiled-in constant, such as set a value from `optarg', set the
    option's `flag' field to zero and its `val' field to a nonzero
    value (the equivalent single-letter option character, if there is
    one).  For long options that have a zero `flag' field, `getopt'
-   returns the contents of the `val' field.  */
-
+   returns the contents of the `val' field.  
+   */
 struct option
 {
 # if (defined __STDC__ && __STDC__) || defined __cplusplus
@@ -103,8 +146,9 @@ struct option
 # else
   char *name;
 # endif
-  /* has_arg can't be an enum because some compilers complain about
-     type mismatches in all the code that assumes it is an int.  */
+  /** has_arg can't be an enum because some compilers complain about
+     type mismatches in all the code that assumes it is an int.  
+     */
   int has_arg;
   int *flag;
   int val;
@@ -185,3 +229,4 @@ extern int _getopt_internal ();
 
 #endif /* getopt.h */
 
+/* eof getopt.h */
