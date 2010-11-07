@@ -31,6 +31,30 @@
 /* End Alan K. Bartky additional copyright notice: Do not remove            */
 /****************************************************************************/
 
+/**
+ * @file bmc.c
+ * Best Master clock algorithm rountines for PTP
+ *
+ * @par Original Copyright
+ * This file is a derivative work from bmc.c
+ * Copyright (c) 2005-2007 Kendall Correll 
+ *
+ * @par Modifications and enhancements Copyright
+ * Modifications Copyright (c) 2007-2010 by Alan K. Bartky, all rights
+ * reserved
+ *
+ * @par
+ * This file (bmc.c) contains Modifications (updates, corrections      
+ * comments and addition of initial support for IEEE 1588 version 1, IEEE 
+ * version 2 and IEEE 802.1AS PTP) and other features by Alan K. Bartky.
+ * 
+ * @par License
+ * These modifications and their associated software algorithms are under 
+ * copyright and for this file are licensed under the terms of the GNU   
+ * General Public License as published by the Free Software Foundation;   
+ * either version 2 of the License, or (at your option) any later version.
+ */
+
 #include "ptpd.h"
 
 /** 
@@ -85,7 +109,18 @@ int return_value;
   ptpClock->sync_interval          = rtOpts->syncInterval;
   
   ptpClock->clock_v1_variance      = rtOpts->clockVariance;  /* see 1588 v1 spec 7.7 */
-  ptpClock->clock_followup_capable = CLOCK_FOLLOWUP;
+  /* AKB 2010-11-07: Test if running 802.1AS (raw sockets)
+   * Based on that boolean, setup clock follow up for 
+   * IP based sockets if FALSE, Raw sockets if TRUE
+   */
+  if (rtOpts->ptp8021AS)
+  {
+      ptpClock->clock_followup_capable = CLOCK_FOLLOWUP_RAW;
+  }
+  else
+  {
+      ptpClock->clock_followup_capable = CLOCK_FOLLOWUP;
+  }
   ptpClock->preferred              = rtOpts->clockPreferred;
   ptpClock->initializable          = INITIALIZABLE;
   ptpClock->external_timing        = EXTERNAL_TIMING;
@@ -169,8 +204,10 @@ int return_value;
 /**
  * Function to handle "m1" for PTP version 1 and version 2
  * See spec table 18 in 1588 v1 and table 13 in 1588 v2 
+ *
+ * @par
+ * AKB: Added V2 init of vars for m1 
  */
-/* AKB: Added V2 init of vars for m1 */
 void m1(PtpClock *ptpClock)
 {
   /* Default data set */
@@ -341,9 +378,13 @@ int getIdentifierOrder(Octet identifier[PTP_CODE_STRING_LENGTH])
   return 6;  // if none of the above, return 6
 }
 
-/* return similar to memcmp()s
-   note: communicationTechnology can be ignored because 
-   if they differed they would not have made it here */
+/**
+   return similar to memcmp()s
+
+   @note
+   communicationTechnology can be ignored because 
+   if they differed they would not have made it here 
+   */
 
 Integer8 bmcDataSetComparison(MsgHeader *headerA, 
                               MsgSync   *syncA,
