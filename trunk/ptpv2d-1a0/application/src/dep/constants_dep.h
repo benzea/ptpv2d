@@ -175,6 +175,88 @@
 #define ADJ_FREQ_MAX  512000
 #endif
 
+#define DEFAULT_UTC_OFFSET           33 /* V2: TAI = UTC plus 33 seconds as of 1/1/2006 */
+
+#ifdef __WINDOWS__
+/* System Dependent (AKB: Moved from constants.h to constants_dep.h */
+#define DEFAULT_SYNC_INTERVAL        0
+#define DEFAULT_ANNOUNCE_INTERVAL    2  // AKB: Added for PTP V2
+#define DEFAULT_V1_CLOCK_VARIANCE    (-4000)  /* AKB: renamed for V2, changed for HW clock */
+#define DEFAULT_V2_CLOCK_VARIANCE    ( 4000)  /* AKB: added   for V2, changed for HW clock */
+#define DEFAULT_CLOCK_STRATUM        4
+#define DEFAULT_INBOUND_LATENCY      0       /**< Default inbound  latency in nanoseconds */
+#define DEFAULT_OUTBOUND_LATENCY     0       /**< Default outbound latency in nanoseconds */
+#define DEFAULT_NO_RESET_CLOCK       FALSE
+#define DEFAULT_AP                   10
+#define DEFAULT_AI                   1000
+#define DEFAULT_DELAY_S              6
+#define DEFAULT_MAX_FOREIGN_RECORDS  5
+
+/* features, only change to reflect changes in implementation */
+#define CLOCK_FOLLOWUP     FALSE  // Windows implementation doesn't support HW timestamping
+#define CLOCK_FOLLOWUP_RAW FALSE
+#define INITIALIZABLE      TRUE
+#define BURST_ENABLED      FALSE
+#define EXTERNAL_TIMING    FALSE
+#define BOUNDARY_CLOCK     FALSE
+#define NUMBER_PORTS       1
+
+
+#elif defined CONFIG_MPC831X
+
+/* System Dependent (AKB: Moved from constants.h to constants_dep.h */
+/* Defines for MPC831X implementation with Hardware timestampinng
+
+#define DEFAULT_SYNC_INTERVAL        0
+#define DEFAULT_ANNOUNCE_INTERVAL    2  // AKB: Added for PTP V2
+#define DEFAULT_V1_CLOCK_VARIANCE    (-1000)  /* AKB: renamed for V2, changed for HW clock */
+#define DEFAULT_V2_CLOCK_VARIANCE    ( 1000)  /* AKB: added   for V2, changed for HW clock */
+#define DEFAULT_CLOCK_STRATUM        4
+#define DEFAULT_INBOUND_LATENCY      0       /**< Default inbound  latency in nanoseconds */
+#define DEFAULT_OUTBOUND_LATENCY     0       /**< Default outbound latency in nanoseconds */
+#define DEFAULT_NO_RESET_CLOCK       FALSE
+#define DEFAULT_AP                   2
+#define DEFAULT_AI                   10
+#define DEFAULT_DELAY_S              6
+#define DEFAULT_MAX_FOREIGN_RECORDS  5
+
+/* features, only change to reflect changes in implementation */
+#define CLOCK_FOLLOWUP     TRUE 
+#define CLOCK_FOLLOWUP_RAW TRUE
+#define INITIALIZABLE      TRUE
+#define BURST_ENABLED      FALSE
+#define EXTERNAL_TIMING    FALSE
+#define BOUNDARY_CLOCK     FALSE
+#define NUMBER_PORTS       1
+
+#else
+
+/* System Dependent (AKB: Moved from constants.h to constants_dep.h */
+#define DEFAULT_SYNC_INTERVAL        0
+#define DEFAULT_ANNOUNCE_INTERVAL    2  // AKB: Added for PTP V2
+#define DEFAULT_V1_CLOCK_VARIANCE    (-4000)  /* AKB: renamed for V2, changed for HW clock */
+#define DEFAULT_V2_CLOCK_VARIANCE    ( 4000)  /* AKB: added   for V2, changed for HW clock */
+#define DEFAULT_CLOCK_STRATUM        4
+#define DEFAULT_INBOUND_LATENCY      0       /**< Default inbound  latency in nanoseconds */
+#define DEFAULT_OUTBOUND_LATENCY     0       /**< Default outbound latency in nanoseconds */
+#define DEFAULT_NO_RESET_CLOCK       FALSE
+#define DEFAULT_AP                   10
+#define DEFAULT_AI                   1000
+#define DEFAULT_DELAY_S              6
+#define DEFAULT_MAX_FOREIGN_RECORDS  5
+
+/* features, only change to reflect changes in implementation */
+#define CLOCK_FOLLOWUP     TRUE   // Linux implementation does support followup on IP sockets
+#define CLOCK_FOLLOWUP_RAW FALSE  // Linux implementation does not yet support timestamps on raw sockets
+#define INITIALIZABLE      TRUE
+#define BURST_ENABLED      FALSE
+#define EXTERNAL_TIMING    FALSE
+#define BOUNDARY_CLOCK     FALSE
+#define NUMBER_PORTS       1
+
+#endif
+
+
 /* UDP/IPv4 dependent */
 
 #define SUBDOMAIN_ADDRESS_LENGTH  4

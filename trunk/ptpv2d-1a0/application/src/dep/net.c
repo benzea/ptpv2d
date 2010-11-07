@@ -822,14 +822,46 @@ UInteger32 findIface(
      */
     netPath->rawIfIndex = device[i].ifr_ifindex;
 
-    /* Setup L2 Multicast address for 802.1AS */
-
+    /* Setup L2 Multicast address for 802.1AS and 1588 Annex F
+     * PDelay messages
+     */
     device[i].ifr_hwaddr.sa_data[0] = 0x01;
     device[i].ifr_hwaddr.sa_data[1] = 0x80;
     device[i].ifr_hwaddr.sa_data[2] = 0xC2;
     device[i].ifr_hwaddr.sa_data[3] = 0x00;
     device[i].ifr_hwaddr.sa_data[4] = 0x00;
     device[i].ifr_hwaddr.sa_data[5] = 0x0E;
+
+     /* AKB 2010-10-07: Added fixed from Scott Atchley
+      * Need to setup sa_family as unspecified 
+      */
+    device[i].ifr_hwaddr.sa_family = AF_UNSPEC; 
+
+    if((ioctl(netPath->rawSock, // Socket ID
+              SIOCADDMULTI,     // Socket IO Command Add multicast MAC address
+              &device[i]        // Interface Request data structure
+                  )) == -1)     // -1 if error
+    {
+       printf("findIface: set multicast MAC error device: %s, raw socket: %d!\n",
+              device[i].ifr_name,
+              netPath->rawSock
+             );
+       return 0;
+    }
+    /* Setup L2 Multicast address for 1588 Annex F
+     * messages except PDelay 
+     */
+    device[i].ifr_hwaddr.sa_data[0] = 0x01;
+    device[i].ifr_hwaddr.sa_data[1] = 0x1B;
+    device[i].ifr_hwaddr.sa_data[2] = 0x19;
+    device[i].ifr_hwaddr.sa_data[3] = 0x00;
+    device[i].ifr_hwaddr.sa_data[4] = 0x00;
+    device[i].ifr_hwaddr.sa_data[5] = 0x00;
+
+     /* AKB 2010-10-07: Added fixed from Scott Atchley
+      * Need to setup sa_family as unspecified 
+      */
+    device[i].ifr_hwaddr.sa_family = AF_UNSPEC; 
 
     if((ioctl(netPath->rawSock, // Socket ID
               SIOCADDMULTI,     // Socket IO Command Add multicast MAC address
@@ -1167,14 +1199,46 @@ UInteger32 findIface(
      */
     netPath->rawIfIndex = device[i].ifr_ifindex;
 
-    /* Setup L2 Multicast address for 802.1AS */
-
+    /* Setup L2 Multicast address for 802.1AS and 1588 Annex F
+     * PDelay messages
+     */
     device[i].ifr_hwaddr.sa_data[0] = 0x01;
     device[i].ifr_hwaddr.sa_data[1] = 0x80;
     device[i].ifr_hwaddr.sa_data[2] = 0xC2;
     device[i].ifr_hwaddr.sa_data[3] = 0x00;
     device[i].ifr_hwaddr.sa_data[4] = 0x00;
     device[i].ifr_hwaddr.sa_data[5] = 0x0E;
+
+     /* AKB 2010-10-07: Added fixed from Scott Atchley
+      * Need to setup sa_family as unspecified 
+      */
+    device[i].ifr_hwaddr.sa_family = AF_UNSPEC; 
+
+    if((ioctl(netPath->rawSock, // Socket ID
+              SIOCADDMULTI,     // Socket IO Command Add multicast MAC address
+              &device[i]        // Interface Request data structure
+                  )) == -1)     // -1 if error
+    {
+       printf("findIface: set multicast MAC error device: %s, raw socket: %d!\n",
+              device[i].ifr_name,
+              netPath->rawSock
+             );
+       return 0;
+    }
+    /* Setup L2 Multicast address for 1588 Annex F
+     * messages except PDelay 
+     */
+    device[i].ifr_hwaddr.sa_data[0] = 0x01;
+    device[i].ifr_hwaddr.sa_data[1] = 0x1B;
+    device[i].ifr_hwaddr.sa_data[2] = 0x19;
+    device[i].ifr_hwaddr.sa_data[3] = 0x00;
+    device[i].ifr_hwaddr.sa_data[4] = 0x00;
+    device[i].ifr_hwaddr.sa_data[5] = 0x00;
+
+     /* AKB 2010-10-07: Added fixed from Scott Atchley
+      * Need to setup sa_family as unspecified 
+      */
+    device[i].ifr_hwaddr.sa_family = AF_UNSPEC; 
 
     if((ioctl(netPath->rawSock, // Socket ID
               SIOCADDMULTI,     // Socket IO Command Add multicast MAC address
@@ -1480,7 +1544,42 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
   }
   // PDelay multicast address parsed OK, set unicast address to user specified value    
   netPath->pdelayMulticastAddr = netAddr.s_addr;
+
+  //
+  // AKB 2010-11-07: Setup raw addresses for either 802.1AS mode
+  // (both addresses: 01-80-C2-00-00-0E) or for 
+  // default Annex F addressing (01-1B-19-00-00-00) for all
+  // messages except PDelay messages 
+  //
+  netPath->rawDestPDelayAddress[0] = 0x01;
+  netPath->rawDestPDelayAddress[1] = 0x80;
+  netPath->rawDestPDelayAddress[2] = 0xC2;
+  netPath->rawDestPDelayAddress[3] = 0x00;
+  netPath->rawDestPDelayAddress[4] = 0x00;
+  netPath->rawDestPDelayAddress[5] = 0x0E;
   
+  if(rtOpts->ptpAnnexF)
+  {
+    // 1588 Annex F default, use 01-1B-19-00-00-00
+    // For messages other than the PDelay ones
+    netPath->rawDestAddress[0] = 0x01;
+    netPath->rawDestAddress[1] = 0x1B;
+    netPath->rawDestAddress[2] = 0x19;
+    netPath->rawDestAddress[3] = 0x00;
+    netPath->rawDestAddress[4] = 0x00;
+  }
+  else
+  {
+    // 802.1AS, use same address for non PDelay messages
+    // as for PDelay messages
+    netPath->rawDestAddress[0] = 0x01;
+    netPath->rawDestAddress[1] = 0x80;
+    netPath->rawDestAddress[2] = 0xC2;
+    netPath->rawDestAddress[3] = 0x00;
+    netPath->rawDestAddress[4] = 0x00;
+    netPath->rawDestAddress[5] = 0x0E;
+  }
+
   /* send a uni-cast address if specified (useful for testing) */
 
   if(rtOpts->unicastAddress[0])
@@ -1798,6 +1897,18 @@ Boolean netShutdown(NetPath *netPath)
     ifr.ifr_hwaddr.sa_data[4] = 0x00;
     ifr.ifr_hwaddr.sa_data[5] = 0x0E;
 
+    ioctl(netPath->rawSock, // Socket ID
+          SIOCDELMULTI,     // Socket IO Command Add multicast MAC address
+          &ifr              // Interface Request data structure
+         );                 // -1 if error (not checked as we are closing anyway)
+
+    ifr.ifr_ifindex = netPath->rawIfIndex;
+    ifr.ifr_hwaddr.sa_data[0] = 0x01;
+    ifr.ifr_hwaddr.sa_data[1] = 0x1B;
+    ifr.ifr_hwaddr.sa_data[2] = 0x19;
+    ifr.ifr_hwaddr.sa_data[3] = 0x00;
+    ifr.ifr_hwaddr.sa_data[4] = 0x00;
+    ifr.ifr_hwaddr.sa_data[5] = 0x00;
 
     ioctl(netPath->rawSock, // Socket ID
           SIOCDELMULTI,     // Socket IO Command Add multicast MAC address
@@ -2685,7 +2796,7 @@ ssize_t netSendGeneral(Octet *buf, UInteger16 length, NetPath *netPath, Boolean 
  * Functon to send a PTP direct ethernet encapsulation message
  * to a raw socket
  */
-ssize_t netSendRaw(Octet *buf, UInteger16 length, NetPath *netPath)
+ssize_t netSendRaw(Octet *buf, UInteger16 length, NetPath *netPath, Boolean pdelay)
 {
   ssize_t ret;
   struct  sockaddr_ll rawaddr;
@@ -2694,10 +2805,31 @@ ssize_t netSendRaw(Octet *buf, UInteger16 length, NetPath *netPath)
   DBGV("netSendRaw: buf %p, length: %d\n", buf, length);
 
   /* Dump hex data if message level debugging enabled */
+  if (pdelay)
+  {
+      /* PDelay message, send to default peer delay message
+       * multicast MAC address
+       */
+      buf[0] = netPath->rawDestPDelayAddress[0];
+      buf[1] = netPath->rawDestPDelayAddress[1];
+      buf[2] = netPath->rawDestPDelayAddress[2];
+      buf[3] = netPath->rawDestPDelayAddress[3];
+      buf[4] = netPath->rawDestPDelayAddress[4];
+      buf[5] = netPath->rawDestPDelayAddress[5];
+  }
+  else
+  {
+      buf[0] = netPath->rawDestAddress[0];
+      buf[1] = netPath->rawDestAddress[1];
+      buf[2] = netPath->rawDestAddress[2];
+      buf[3] = netPath->rawDestAddress[3];
+      buf[4] = netPath->rawDestAddress[4];
+      buf[5] = netPath->rawDestAddress[5];
+  }
+
 #ifdef DBGM_ENABLED
   if ((debugLevel & 4) == 4 )
   {
-  
     for (i=0; i<length; i++)
     {
       if (i % 16 == 0)

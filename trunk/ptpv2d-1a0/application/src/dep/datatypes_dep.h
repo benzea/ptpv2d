@@ -182,15 +182,17 @@ typedef struct
 /** Structure to define data for Network path and control information */
 typedef struct 
 {
-  SOCKET        eventSock;            /**< Event port UDP socket */
-  SOCKET        generalSock;          /**< General port UDP socket */
-  SOCKET        rawSock;              /**< Raw Socket for 802.1AS operation */
-  Integer32     multicastAddr;        /**< IP multicast address */
-  Integer32     unicastAddr;          /**< Optional IP unicast destination address */
-  Integer32     pdelayMulticastAddr;  /**< Address for V2 PDelay messages */
-  UInteger32    rawIfIndex;           /**< Interface Index of raw socket */
-  char          ifName[IFNAMSIZ];     /**< Interface name (e.g. "eth0") */
-  unsigned char portMacAddress[6];    /**< Local Hardware Port MAC address */
+  SOCKET        eventSock;              /**< Event port UDP socket */
+  SOCKET        generalSock;            /**< General port UDP socket */
+  SOCKET        rawSock;                /**< Raw Socket for 802.1AS operation */
+  Integer32     multicastAddr;          /**< IP multicast address */
+  Integer32     unicastAddr;            /**< Optional IP unicast destination address */
+  Integer32     pdelayMulticastAddr;    /**< Address for V2 PDelay messages */
+  UInteger32    rawIfIndex;             /**< Interface Index of raw socket */
+  char          ifName[IFNAMSIZ];       /**< Interface name (e.g. "eth0") */
+  unsigned char portMacAddress[6];      /**< Local Hardware Port MAC address */
+  unsigned char rawDestAddress[6];      /**< Destination MAC Address for raw socket messages */
+  unsigned char rawDestPDelayAddress[6];/**< Destination MAC Address for raw socket PDelay messages */
 } NetPath;
 
 #endif

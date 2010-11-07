@@ -162,7 +162,7 @@ int parseCommandLineArguments (int           argc,
                              // sets this variable to 1)
   
   /* parse command line arguments */
-  while( (c = getopt(argc, argv, "?cf:dDxta:w:b:u:l:o:e:hy:Y:m:gps:i:v:n:k:rz:28PH:A:R")) != -1 )
+  while( (c = getopt(argc, argv, "?cf:dDxta:w:b:u:l:o:e:hy:Y:m:gps:i:v:n:k:rz:28FPH:A:R")) != -1 )
   {
     switch(c) {
     case '?':
@@ -192,6 +192,7 @@ int parseCommandLineArguments (int           argc,
 "-u ADDRESS        also send uni-cast to ADDRESS\n"
 "-2                run in PTP version 2 mode instead of version 1\n"
 "-8                run in IEEE 802.1AS PTP Layer 2 mode instead of IP/UDP\n"
+"-F                run in 1588 Annex F PTP Layer 2 mode instead of IP/UDP\n"
 "-P                run Pdelay Req/Resp mechanism instead of Delay Resp/Req\n"
 "-l NUMBER,NUMBER  specify inbound, outbound latency in nsec\n"
 "\n"
@@ -405,6 +406,10 @@ int parseCommandLineArguments (int           argc,
       rtOpts->ptpv2 = TRUE;
       break;
 
+    case 'F':
+      // run in 1588 Annex F mode (different addresses for PDelay messages
+      rtOpts->ptpAnnexF = TRUE;
+      rtOpts->ptp8021AS = TRUE; // Most checks for raw sockets uses this
     case '8':
       // run in 802.1AS mode instead of 1588 IP/UDP
       rtOpts->ptp8021AS = TRUE;
