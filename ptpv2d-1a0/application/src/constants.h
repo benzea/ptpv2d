@@ -67,27 +67,7 @@
 // 12345678901234567890123456789012345678901234567 8
 //          1         2         3         4
 
-#define DEFAULT_SYNC_INTERVAL        0
-#define DEFAULT_ANNOUNCE_INTERVAL    2  // AKB: Added for PTP V2
-#define DEFAULT_UTC_OFFSET           33 /* V2: TAI = UTC plus 33 seconds as of 1/1/2006 */
-#define DEFAULT_V1_CLOCK_VARIANCE    (-1000)  /* AKB: renamed for V2, changed for HW clock */
-#define DEFAULT_V2_CLOCK_VARIANCE    ( 1000)  /* AKB: added   for V2, changed for HW clock */
-#define DEFAULT_CLOCK_STRATUM        4
-#define DEFAULT_INBOUND_LATENCY      0       /**< Default inbound  latency in nanoseconds */
-#define DEFAULT_OUTBOUND_LATENCY     0       /**< Default outbound latency in nanoseconds */
-#define DEFAULT_NO_RESET_CLOCK       FALSE
-#define DEFAULT_AP                   2       /* Changed for HW clock */
-#define DEFAULT_AI                   10      /* Changed for HW clock */
-#define DEFAULT_DELAY_S              6
-#define DEFAULT_MAX_FOREIGN_RECORDS  5
 
-/* features, only change to refelect changes in implementation */
-#define CLOCK_FOLLOWUP    TRUE
-#define INITIALIZABLE     TRUE
-#define BURST_ENABLED     FALSE
-#define EXTERNAL_TIMING   FALSE
-#define BOUNDARY_CLOCK    FALSE
-#define NUMBER_PORTS      1
 #define VERSION_PTP       1  // AKB: Changed to default version, added V1 and V2 values
 #define VERSION1_PTP      1
 #define VERSION2_PTP      2

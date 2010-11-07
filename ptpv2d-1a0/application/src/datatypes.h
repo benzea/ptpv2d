@@ -667,6 +667,7 @@ typedef struct
   Boolean       halfEpoch;
   Boolean       ptpv2;                /**< AKB: Flag added to support Version 2 Y/N */
   Boolean       ptp8021AS;            /**< AKB: Flag added to support 802.1AS PTP Y/N */
+  Boolean       ptpAnnexF;            /**< AKB: Flag added to support 1588 Annex F PTP Y/N */
   Boolean       pdelay;               /**< AKB: Flag added to support Pdelay Y/N */
   Integer32     baseAdjustValue;      /**< AKB: Added to support setting/calc of base value */
   Boolean       rememberAdjustValue;  /**< AKB: Added to support Slave remembering masters clock */

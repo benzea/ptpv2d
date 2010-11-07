@@ -3257,7 +3257,8 @@ void issueAnnounce(RunTimeOpts * rtOpts,
          );
      ret = netSendRaw(&(ptpClock->outputBuffer[2]),
                       (packet_length+14),
-                      &ptpClock->netPath
+                      &ptpClock->netPath,
+                      FALSE
                      );
   }
   else
@@ -3336,7 +3337,8 @@ void issueSync(RunTimeOpts * rtOpts,
          );
      ret = netSendRaw(&(ptpClock->outputBuffer[2]),
                       (packet_length+14),
-                      &ptpClock->netPath
+                      &ptpClock->netPath,
+                      FALSE
                      );
   }
   else
@@ -3426,7 +3428,8 @@ void issueFollowup(TimeInternal *time,    // Transmit Time from last sent Sync m
   {
      ret = netSendRaw(&(ptpClock->outputBuffer[2]),
                       (packet_length+14),
-                      &ptpClock->netPath
+                      &ptpClock->netPath,
+                      FALSE
                      );
   }
   else
@@ -3523,7 +3526,8 @@ void issueDelayReq(RunTimeOpts *rtOpts,
      DBGV("issueDelayReq: calling netSendRaw\n");
      ret = netSendRaw(&(ptpClock->outputBuffer[2]),
                       (length+14),
-                      &ptpClock->netPath
+                      &ptpClock->netPath,
+                      FALSE
                      );
   }
   else
@@ -3599,7 +3603,8 @@ int ret;
   {
      ret = netSendRaw(&(ptpClock->outputBuffer[2]),
                        (length+14),
-                      &ptpClock->netPath
+                      &ptpClock->netPath,
+                      FALSE
                      );
   }
   else
@@ -3663,7 +3668,8 @@ void issuePDelayResp(TimeInternal *time,
   {
      ret = netSendRaw(&(ptpClock->outputBuffer[2]),
                        (length+14),
-                      &ptpClock->netPath
+                      &ptpClock->netPath,
+                      TRUE
                      );
   }
   else
@@ -3731,7 +3737,8 @@ void issuePDelayRespFollowup(TimeInternal *time,    /**< Transmit Time from PDel
   {
      ret = netSendRaw(&(ptpClock->outputBuffer[2]),
                       (packet_length+14),
-                      &ptpClock->netPath
+                      &ptpClock->netPath,
+                      TRUE
                      );
   }
   else
@@ -3780,7 +3787,8 @@ void issueManagement(MsgHeader     *header,
   {
      ret = netSendRaw(&(ptpClock->outputBuffer[2]),
                       (length+14),
-                      &ptpClock->netPath
+                      &ptpClock->netPath,
+                      FALSE
                      );
   }
   else
