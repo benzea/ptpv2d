@@ -54,6 +54,7 @@ Usage:  ptpv2d [OPTION]
 -u ADDRESS        also send uni-cast to ADDRESS
 -2                run in PTP version 2 mode instead of version 1
 -8                run in IEEE 802.1AS PTP Layer 2 mode instead of IP/UDP
+-F                run in 1588 Annex F PTP Layer 2 mode instead of IP/UDP
 -P                run Pdelay Req/Resp mechanism instead of Delay Resp/Req
 -l NUMBER,NUMBER  specify inbound, outbound latency in nsec
 
