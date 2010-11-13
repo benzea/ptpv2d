@@ -57,6 +57,7 @@
  * General Public License as published by the Free Software Foundation;   
  * either version 2 of the License, or (at your option) any later version.
  */ 
+#include <limits.h>
 #include "ptpd.h"
 
 #define NSEC 1000000000
