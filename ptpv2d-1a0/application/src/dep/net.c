@@ -1291,10 +1291,10 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
   DBG("netInit: Setting up sockets\n");
   /* open event and general sockets for IEEE 1588 operation */
 
-  if( (netPath->eventSock    = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) ) < 0
-    || (netPath->generalSock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) ) < 0 )
+  if(  (int)(netPath->eventSock   = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) ) < 0
+    || (int)(netPath->generalSock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) ) < 0 )
   {
-    PERROR("netInit: failed to initalize event or general socket");
+    PERROR("netInit: failed to create event or general socket");
     return FALSE;
   }
   DBGV("netInit: created event socket   %d\n",
@@ -1308,12 +1308,12 @@ Boolean netInit(NetPath *netPath, RunTimeOpts *rtOpts, PtpClock *ptpClock)
 
   if (rtOpts->ptp8021AS)
   {
-     if( (netPath->rawSock = socket(PF_PACKET, SOCK_RAW, htons(0x88F7))
+     if( (int)(netPath->rawSock = socket(PF_PACKET, SOCK_RAW, htons(0x88F7))
          ) < 0
        )
 
      {
-       PERROR("netInit: failed to initalize raw socket");
+       PERROR("netInit: failed to create raw socket");
        return FALSE;
      }
      DBGV("netInit: created raw socket     %d\n",

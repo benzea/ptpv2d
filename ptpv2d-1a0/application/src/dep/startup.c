@@ -151,7 +151,8 @@ int parseCommandLineArguments (int           argc,
 {
   int c;             // Current command option
 #ifdef __WINDOWS__
-  FILE * fd;
+  FILE * fp;         // File pointer
+  int fd = -1;       // File descriptor
 #else
   int fd = -1;       // File descriptor
 #endif
@@ -225,9 +226,10 @@ int parseCommandLineArguments (int           argc,
       
     case 'f':
 #ifdef __WINDOWS__
-      if ((fd = freopen( optarg, "w", (FILE *)stdout )) != (FILE *)NULL)
+      if ((fp = freopen( optarg, "w", (FILE *)stdout )) != (FILE *)NULL)
       {
-          _dup2((int)fd, STDERR_FILENO);
+          fd = fileno(fp);
+          _dup2(fd, STDERR_FILENO);
 #else
       // Force console output to user specified filename 
       if((fd = creat(optarg,    // filename from command line
