@@ -37,7 +37,7 @@
 /*
  * @file sys.c
  *
- * Misc. system dependent functions, mainly time related and also contains
+ * @brief Misc. system dependent functions, mainly time related and also contains
  * function to display statistics in printable format or for output 
  * in .csv format for export to spreadsheet programs
  *
@@ -206,10 +206,12 @@ void displayStats(RunTimeOpts *rtOpts, PtpClock *ptpClock)
 }
 
 /** 
- * Function to sleep for a user specified nubmer of nanoseconds 
+ * @brief Function to sleep for a user specified nubmer of nanoseconds 
  * This function converts to local system time capabilities
  * as necessary (example, convert nanoseconds to microseconds,
  * milliseconds, etc. depending on system timer resolution
+ *
+ * @param[in] t  Pointer to TimeInternal structure with number of nanoseconds to sleep
  */
 Boolean nanoSleep(TimeInternal *t)
 {
@@ -243,10 +245,12 @@ Boolean nanoSleep(TimeInternal *t)
 }
 
 /** 
- * Function to take the time from the system and use it to set the
+ * @brief Function to take the time from the system and use it to set the
  * PTP current time.
  *
- * @note This function is currently only used in systems with 
+ * @details
+ * @par NOTE:
+ * This function is currently only used in systems with 
  * hardware timestamping and is used to set the hardware
  * timestamping clock based on the current system time (linux, windows, etc.)
  * as a base time to start with.
@@ -279,7 +283,7 @@ void setPtpTimeFromSystem(Integer16 utc_offset)
 }
 
 /** 
- * Function to take the time from PTP and use it to set the
+ * @brief Function to take the time from PTP and use it to set the
  * system's time of day clock.
  *
  * @param[in]  utc_offset Integer16 value of number of UTC 
@@ -309,7 +313,7 @@ void setSystemTimeFromPtp(Integer16 utc_offset)
 }
 
 /** 
- * Function to get time from the system or specific
+ * @brief Function to get time from the system or specific
  * hardware PTP timer (based on system capabilities
  * and architecture) and return it as ptpv2d system
  * internal time format
@@ -345,21 +349,22 @@ void getTime(TimeInternal *time, Integer16 utc_offset)
     // Get Windows current low time
     U64Seconds +=   (unsigned long long) WindowsUTCTime.dwLowDateTime;
 
-    // Mod by 10,000 to get sub seconds (in 100 ns increments)
-    Nanoseconds =   (unsigned long)(U64Seconds % 10000ULL);
+    // Mod by 10,000,000 to get sub seconds (in 100 ns increments)
+    Nanoseconds =   (unsigned long)(U64Seconds % 10000000ULL);
 
-    // Subtract out sub seconds
+    // Subtract out sub seconds to get seconds 
+    // since January 1, 1601 (in 100 ns increments)
     U64Seconds -=   (unsigned long long) Nanoseconds;
 
     // Convert sub seconds in 100 ns increments to nanoseconds
     Nanoseconds *=  100U;
 
-    // Convert 100 ns increments to seconds
-    U64Seconds /=   10000ULL;    
+    // Convert Seconds since 1601-01-01 in 100 ns increments to seconds
+    U64Seconds /=   10000000ULL;    
 
     // Subtract absolute number of seconds between 
     // January 1, 1970 and January 1, 1601
-    U64Seconds -=   1164447360ULL;  
+    U64Seconds -=   11644473600ULL;  
 
     // Copy calculated seconds and nanoseconds to 
     // internal time structure (seconds and nanoseconds
@@ -379,7 +384,8 @@ void getTime(TimeInternal *time, Integer16 utc_offset)
   /* PTP uses TAI time (time without leap seconds
    * since January 1, 1970), gettime of day is UTC
    * (which includes leap seconds), so adjust for leap
-   * seconds since January 1, 1970
+   * seconds since January 1, 1970 by addint number
+   * of seconds offset from UTC
    */
   time->seconds     += utc_offset;
 }
@@ -389,7 +395,7 @@ void getTime(TimeInternal *time, Integer16 utc_offset)
  * Linux time of day clock 
  */
 /** 
- * Function to set time to the system or specific
+ * @brief  Function to set time to the system or specific
  * hardware PTP timer (based on system capabilities
  * and architecture) base on ptpv2d system
  * internal time format
@@ -412,15 +418,15 @@ void setTime(TimeInternal *time, Integer16 utc_offset)
     // Change epoch in seconds from January 1, 1970
     // to Windows January 1, 1901
 
-    U64WindowsTime += 1164447360ULL;
+    U64WindowsTime += 11644473600ULL;
 
-    // Change seconds from January 1, 19701 UTC time to TAI time
+    // Change seconds from January 1, 1970 TAI time to UTC time
     
     U64WindowsTime  -= (unsigned long long) utc_offset;
 
     // Convert seconds to 100 ns increments since January 1, 1601
 
-    U64WindowsTime *= 10000ULL;
+    U64WindowsTime *= 10000000ULL;
 
     // Add in nanoseconds converted to 100 ns increments
 
@@ -449,17 +455,21 @@ void setTime(TimeInternal *time, Integer16 utc_offset)
   tv.tv_sec  = time->seconds;
   tv.tv_usec = time->nanoseconds/1000;
 
-  /* PTP uses TAI, gettime of day is UTC, so adjust */
+  /* PTP uses TAI, gettime of day is UTC, so adjust by subtracting 
+   * UTC offset from TAI to adjust for leap seconds
+   */
   tv.tv_sec  -= utc_offset;
   settimeofday(&tv, 0);
 #endif  
 
-  NOTIFY("setTime: resetting clock to TAI %ds %dns\n", time->seconds, time->nanoseconds);
+  NOTIFY("setTime: resetting clock to UTC %ds %dns\n", time->seconds, time->nanoseconds);
 }
 
 /** 
- * Function to map generic need for a 16 bit unsigned random integer to
+ * @brief Function to map generic need for a 16 bit unsigned random integer to
  * appropriate system random function/library
+ * @param[in]  seed  32 bit integer seed for random number generator
+ * @returns Unsigned 32 bit integer pseudo-random number
  */
 UInteger16 getRand(UInteger32 *seed)
 {

@@ -95,7 +95,12 @@
 // PERROR in the code
 //#define ERROR(x, ...)  fprintf(stderr, "\n(ptp error)  " x, ##__VA_ARGS__)
 
+#ifdef __WINDOWS__
+#define PERROR(x, ...) perror("\n(ptp error)  " x ": ", ##__VA_ARGS__)
+#else
 #define PERROR(x, ...) fprintf(stderr, "\n(ptp error)  " x ": %m\n", ##__VA_ARGS__)
+#endif
+
 #define NOTIFY(x, ...) fprintf(stderr, "\n(ptp notice) " x, ##__VA_ARGS__)
 
 /* debug messages */
