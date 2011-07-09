@@ -118,7 +118,11 @@ void ptpdShutdown()
 #endif
 }
 
-
+/**
+ * @brief Function to parse command line arguments and
+ * from that, set misc. run time options and/or global
+ * variables
+ */
 int parseCommandLineArguments (int           argc,
                                char **       argv,
                                Integer16 *   ret,
@@ -127,10 +131,9 @@ int parseCommandLineArguments (int           argc,
 {
   int c;             // Current command option
 #ifdef __WINDOWS__
-  FILE * fd;
-#else
-  int fd = -1;       // File descriptor
+  FILE * fd;         // File pointer
 #endif
+  int fd = -1;       // File descriptor
 
   output_fd = 0;
   rtOpts->nonDaemon = FALSE; // Assume we are running in Daemon mode unless set otherwise
@@ -200,9 +203,10 @@ int parseCommandLineArguments (int           argc,
       
     case 'f':
 #ifdef __WINDOWS__
-      if ((fd = freopen( optarg, "w", (FILE *)stdout )) != (FILE *)NULL)
+      if ((fp = freopen( optarg, "w", (FILE *)stdout )) != (FILE *)NULL)
       {
-          _dup2((int)fd, STDERR_FILENO);
+          fd = fileno(fp);
+          _dup2(fd, STDERR_FILENO);
 #else
       // Force console output to user specified filename 
       if((fd = creat(optarg,    // filename from command line
